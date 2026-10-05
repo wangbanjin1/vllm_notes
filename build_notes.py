@@ -106,7 +106,7 @@ def md_to_html(md_text: str) -> tuple[str, str]:
     def flush_callout():
         nonlocal in_callout, callout_buf, html_out
         if in_callout:
-            c_title = {"note": "💡 说明与背景", "warning": "⚠️ 核心挑战与警告", "important": "📐 重要公式与结论"}.get(callout_type, "提示")
+            c_title = {"note": "说明与背景", "warning": "核心挑战与限制", "important": "核心公式与结论"}.get(callout_type, "提示")
             inner_html = "\n".join(callout_buf)
             html_out.append(f'<div class="callout callout-{callout_type}">')
             html_out.append(f'  <div class="callout-title">{c_title}</div>')
@@ -300,10 +300,10 @@ def build_index(articles):
         items_html.append(f'''
         <li style="margin-bottom: 14px; padding: 12px 16px; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 8px;">
             <a href="html/{item['filename']}" style="font-size: 1.15rem; font-weight: 600; color: var(--accent-primary); text-decoration: none;">
-                📖 {item['title']}
+                {item['title']}
             </a>
             <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;">
-                源文件：<code>markdown/{item['md_name']}</code> · 已生成：<code>html/{item['filename']}</code>
+                源文件：<code>markdown/{item['md_name']}</code> · 生成目标：<code>html/{item['filename']}</code>
             </div>
         </li>
         ''')
@@ -347,9 +347,9 @@ def build_index(articles):
 </head>
 <body>
     <div class="container">
-        <h1 style="margin-bottom: 8px;">📚 1Cat-vLLM 源码精读与算子开发指南</h1>
+        <h1 style="margin-bottom: 8px;">1Cat-vLLM 源码精读与算子开发指南</h1>
         <p style="color: var(--text-muted); margin-bottom: 30px;">
-            目录管理体系：修改 <code>learn_notes/markdown/*.md</code> 源码后，双击 <code>build_notes.bat</code> 即可全自动重新编译！
+            目录管理体系：修改 <code>learn_notes/markdown/*.md</code> 源码后，运行 <code>build_notes.bat</code> 即可全自动重新编译。
         </p>
         <ul style="list-style: none; padding: 0;">
             {"".join(items_html)}

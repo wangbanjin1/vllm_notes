@@ -334,12 +334,12 @@
     <div class="container">
         <div class="top-bar">
             <div class="nav-links">
-                <a href="../index.html" class="nav-btn">📂 目录总览</a>
+                <a href="../index.html" class="nav-btn">目录总览</a>
                 <span style="color: var(--border-color)">|</span>
                 <span style="font-size: 0.88rem; color: var(--text-muted);">{{SOURCE_REL_PATH}}</span>
             </div>
             <button class="theme-switch-btn" onclick="toggleTheme()" id="themeBtn">
-                🌙 切换暮色
+                切换暮色
             </button>
         </div>
 
@@ -348,8 +348,8 @@
         </article>
 
         <div class="source-meta">
-            <span>📝 本篇 Markdown 源文件：<code>{{SOURCE_REL_PATH}}</code></span>
-            <span>⚡ 修改 Markdown 后运行 <code>build_notes.bat</code> 即可无缝同步更新</span>
+            <span>Markdown 源文件：<code>{{SOURCE_REL_PATH}}</code></span>
+            <span>修改 Markdown 后运行 <code>build_notes.bat</code> 即可同步更新</span>
         </div>
 
         <footer>
@@ -364,11 +364,11 @@
             const btn = document.getElementById('themeBtn');
             if (current === 'twilight') {
                 html.setAttribute('data-theme', 'parchment');
-                btn.innerHTML = '🌙 切换暮色';
+                btn.innerHTML = '切换暮色';
                 localStorage.setItem('doc-theme', 'parchment');
             } else {
                 html.setAttribute('data-theme', 'twilight');
-                btn.innerHTML = '☀️ 切换米纸';
+                btn.innerHTML = '切换米纸';
                 localStorage.setItem('doc-theme', 'twilight');
             }
         }
@@ -379,7 +379,7 @@
                 document.documentElement.setAttribute('data-theme', saved);
                 const btn = document.getElementById('themeBtn');
                 if (btn) {
-                    btn.innerHTML = saved === 'twilight' ? '☀️ 切换米纸' : '🌙 切换暮色';
+                    btn.innerHTML = saved === 'twilight' ? '切换米纸' : '切换暮色';
                 }
             }
         })();

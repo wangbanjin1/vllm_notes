@@ -194,18 +194,17 @@ def md_to_html(md_text: str) -> tuple[str, str]:
         else:
             flush_table()
 
-        # 6. 标题 # ~ ###
-        if line.startswith("# "):
-            title = line[2:].strip()
-            html_out.append(f"<h1>{parse_inline(title)}</h1>")
-            i += 1
-            continue
-        elif line.startswith("## "):
-            html_out.append(f"<h2>{parse_inline(line[3:].strip())}</h2>")
-            i += 1
-            continue
-        elif line.startswith("### "):
-            html_out.append(f"<h3>{parse_inline(line[4:].strip())}</h3>")
+        # 6. 标题 # ~ ######
+        heading_match = re.match(r'^(#{1,6})\s+(.*)', line)
+        if heading_match:
+            flush_list()
+            flush_table()
+            flush_callout()
+            level = len(heading_match.group(1))
+            htext = heading_match.group(2).strip()
+            if level == 1:
+                title = htext
+            html_out.append(f"<h{level}>{parse_inline(htext)}</h{level}>")
             i += 1
             continue
 

@@ -190,6 +190,22 @@
             font-weight: 600;
         }
 
+        h4 {
+            font-size: 1.02rem;
+            margin-top: 18px;
+            margin-bottom: 10px;
+            color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        h5, h6 {
+            font-size: 0.95rem;
+            margin-top: 14px;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
         p {
             margin-bottom: 18px;
             color: var(--text-primary);
@@ -403,7 +419,7 @@
 <p>连续显存矩阵乘法的地址计算是线性的：</p>
 <pre><code class="language-text">Address = Base + token_idx * Stride</code></pre>
 <p>而在 PagedAttention 中，读写 KV Cache 变成了<strong>二级跳表寻址</strong>（整数除法算块号，取模算余数）。</p>
-<p>#### 具体计算示例</p>
+<h4>具体计算示例</h4>
 <p>假设每个物理块固定存放 16 个 Token（<code>BLOCK_SIZE = 16</code>）：</p>
 <ul>
   <li>当前正在处理第 35 个 Token（下标从 0 起，<code>token_idx = 35</code>）；</li>
@@ -417,7 +433,7 @@
   <li><strong>最终显存物理地址</strong>：</li>
 </ol>
 <pre><code class="language-text">   物理地址 = 显存池基址 + (3 * 物理块字节大小) + (3 * 单个Token的KV字节大小)</code></pre>
-<p>#### 真实 CUDA 算子中的代码对照</p>
+<h4>真实 CUDA 算子中的代码对照</h4>
 <p>对应于项目源码 <code>csrc/attention/sm70_v37/tail.cu</code>：</p>
 <pre><code class="language-cuda">// 1. 整数除法得到逻辑页号，直接查表获取物理页号
 const int physical_page = block_table[token_idx / page_size];

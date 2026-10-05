@@ -400,19 +400,37 @@
 5. 架构特化算子层 (Flash-V100 / SM70-TurboMind)
    └─ 执行 Volta 定制的 Wide QK/PV 打包、W4A16 软解算子。</code></pre>
 <h3>Paged 机制对底层 CUDA 寻址的影响</h3>
-<p>连续矩阵乘法的地址计算是线性的：</p>
-<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\text{Address} = \text{Base} + i \times \text{Stride}$$</div>
-<p>而在 PagedAttention 中，读写 KV Cache 变为<strong>二级跳表寻址</strong>：</p>
+<p>连续显存矩阵乘法的地址计算是线性的：</p>
+<pre><code class="language-text">Address = Base + token_idx * Stride</code></pre>
+<p>而在 PagedAttention 中，读写 KV Cache 变成了<strong>二级跳表寻址</strong>（整数除法算块号，取模算余数）。</p>
+<p>#### 具体计算示例</p>
+<p>假设每个物理块固定存放 16 个 Token（<code>BLOCK_SIZE = 16</code>）：</p>
+<ul>
+  <li>当前正在处理第 35 个 Token（下标从 0 起，<code>token_idx = 35</code>）；</li>
+  <li>调度器分配给该请求的物理块映射表为：<code>block_table = [7, 12, 3, 9]</code>。</li>
+</ul>
+<p>寻址定位过程如下：</p>
 <ol>
-  <li>计算逻辑块号：$\text{logical\_block} = t / \text{BlockSize}$</li>
-  <li>查表获取物理块号：$\text{physical\_block} = \text{block\_tables}[\text{req\_id}, \text{logical\_block}]$</li>
-  <li>计算块内偏移：$\text{offset} = t \pmod{\text{BlockSize}}$</li>
-  <li>计算实际显存地址：$\text{physical\_addr} = \text{Base} + \text{physical\_block} \times \text{BlockBytes} + \text{offset} \times \text{TokenBytes}$</li>
+  <li><strong>计算逻辑块号（整除）</strong>：<code>35 // 16 = 2</code>，说明第 35 个 Token 属于该序列的第 2 号逻辑块；</li>
+  <li><strong>查表获取物理块号（查表）</strong>：<code>block_table[2] = 3</code>，说明数据实际落在显存池的第 3 号物理块；</li>
+  <li><strong>计算块内偏移（取模）</strong>：<code>35 % 16 = 3</code>，说明在该物理块内部位于第 3 个槽位；</li>
+  <li><strong>最终显存物理地址</strong>：</li>
 </ol>
+<pre><code class="language-text">   物理地址 = 显存池基址 + (3 * 物理块字节大小) + (3 * 单个Token的KV字节大小)</code></pre>
+<p>#### 真实 CUDA 算子中的代码对照</p>
+<p>对应于项目源码 <code>csrc/attention/sm70_v37/tail.cu</code>：</p>
+<pre><code class="language-cuda">// 1. 整数除法得到逻辑页号，直接查表获取物理页号
+const int physical_page = block_table[token_idx / page_size];
+
+// 2. 取模得到物理页内的具体行/槽位
+const int page_offset   = token_idx % page_size;
+
+// 3. 计算实际显存读取指针
+const half* k_ptr = kv_cache + physical_page * page_stride + page_offset * head_dim;</code></pre>
 <div class="callout callout-warning">
   <div class="callout-title">核心挑战与限制</div>
 <p>访存合并要求</p>
-<p>如果线程直接执行上述散乱寻址，会导致严重的非合并访存（Uncoalesced Access）。因此在 Kernel 设计中，需要通过线程协同，将一个物理块内的数据通过 <strong>128-bit 向量化读写（<code>float4</code> / <code>uint4</code>）</strong> 搬运至 Shared Memory。</p>
+<p>如果每个 CUDA 线程各自独立计算非对齐的地址，会导致严重的非合并访存（Uncoalesced Access）。因此在 Kernel 设计中，需要通过线程协同，将一个物理块内的数据通过 <strong>128-bit 向量化读写（<code>float4</code> / <code>uint4</code>）</strong> 批量搬运至 Shared Memory。</p>
 <p></p>
 </div>
 <hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>

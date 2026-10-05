@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="parchment">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{TITLE}} - 1Cat-vLLM 源码精读</title>
+    <!-- MathJax for rendering LaTeX formulas offline/online gracefully -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root[data-theme="parchment"] {
+            --bg-color: #f7f4ec;
+            --surface-color: #eee9dc;
+            --surface-elevated: #e6dfcf;
+            --border-color: #dcd4c0;
+            --text-primary: #2d3748;
+            --text-secondary: #5c687a;
+            --text-muted: #798696;
+            --accent-primary: #a35d28;
+            --accent-glow: rgba(163, 93, 40, 0.08);
+            --code-bg: #eae3d2;
+            --code-text: #8d3a2b;
+            --pre-bg: #ece5d6;
+            --pre-text: #2d3748;
+            --callout-note-bg: #e5ede3;
+            --callout-note-border: #709775;
+            --callout-note-text: #2b5133;
+            --callout-warn-bg: #f5eedb;
+            --callout-warn-border: #c48a37;
+            --callout-warn-text: #704b12;
+            --callout-imp-bg: #e5eaf5;
+            --callout-imp-border: #5c7cb6;
+            --callout-imp-text: #1e3863;
+            --math-bg: #eee7d7;
+            --math-border: #c9bea6;
+            --table-header: #e4dccb;
+            --table-alt: #f1ecdf;
+            --tag-bg: #dfd5be;
+            --tag-text: #59472d;
+            --toggle-bg: #dfd6c2;
+        }
+
+        :root[data-theme="twilight"] {
+            --bg-color: #1a1e24;
+            --surface-color: #232931;
+            --surface-elevated: #2c343f;
+            --border-color: #39424e;
+            --text-primary: #dce1e8;
+            --text-secondary: #9da7b3;
+            --text-muted: #707b88;
+            --accent-primary: #e09f67;
+            --accent-glow: rgba(224, 159, 103, 0.1);
+            --code-bg: #15181d;
+            --code-text: #f08d70;
+            --pre-bg: #171b21;
+            --pre-text: #cdd3dc;
+            --callout-note-bg: #202b28;
+            --callout-note-border: #4d7a68;
+            --callout-note-text: #8bbfa8;
+            --callout-warn-bg: #2b251d;
+            --callout-warn-border: #8a6c38;
+            --callout-warn-text: #d9b168;
+            --callout-imp-bg: #1d2533;
+            --callout-imp-border: #4a638c;
+            --callout-imp-text: #96b5e3;
+            --math-bg: #1f252d;
+            --math-border: #3b4654;
+            --table-header: #262e38;
+            --table-alt: #1f242c;
+            --tag-bg: #323c48;
+            --tag-text: #d2a679;
+            --toggle-bg: #323b47;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.85;
+            padding: 40px 24px;
+            font-size: 16px;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 920px;
+            margin: 0 auto;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .nav-btn {
+            background-color: var(--surface-color);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .nav-btn:hover {
+            color: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .theme-switch-btn {
+            background-color: var(--toggle-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+
+        .theme-switch-btn:hover {
+            opacity: 0.9;
+        }
+
+        header {
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 24px;
+            margin-bottom: 36px;
+        }
+
+        h1 {
+            font-size: 2.1rem;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            line-height: 1.35;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        h2 {
+            font-size: 1.45rem;
+            margin-top: 42px;
+            margin-bottom: 18px;
+            color: var(--text-primary);
+            border-left: 4px solid var(--accent-primary);
+            padding-left: 14px;
+            font-weight: 600;
+        }
+
+        h3 {
+            font-size: 1.15rem;
+            margin-top: 24px;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        p {
+            margin-bottom: 18px;
+            color: var(--text-primary);
+        }
+
+        ul, ol {
+            margin-bottom: 18px;
+            padding-left: 24px;
+        }
+
+        li {
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        code {
+            font-family: "JetBrains Mono", Consolas, Menlo, Monaco, monospace;
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 0.88em;
+        }
+
+        pre {
+            background-color: var(--pre-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 18px;
+            overflow-x: auto;
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+
+        pre code {
+            background-color: transparent;
+            color: var(--pre-text);
+            padding: 0;
+            font-size: 0.9rem;
+        }
+
+        blockquote {
+            background-color: var(--surface-color);
+            border-left: 4px solid var(--border-color);
+            padding: 14px 18px;
+            border-radius: 0 6px 6px 0;
+            margin: 20px 0;
+            color: var(--text-secondary);
+        }
+
+        .callout {
+            border-radius: 8px;
+            padding: 18px 22px;
+            margin: 24px 0;
+        }
+
+        .callout.callout-note {
+            background-color: var(--callout-note-bg);
+            border-left: 4px solid var(--callout-note-border);
+        }
+
+        .callout.callout-note .callout-title {
+            color: var(--callout-note-text);
+        }
+
+        .callout.callout-warning {
+            background-color: var(--callout-warn-bg);
+            border-left: 4px solid var(--callout-warn-border);
+        }
+
+        .callout.callout-warning .callout-title {
+            color: var(--callout-warn-text);
+        }
+
+        .callout.callout-important {
+            background-color: var(--callout-imp-bg);
+            border-left: 4px solid var(--callout-imp-border);
+        }
+
+        .callout.callout-important .callout-title {
+            color: var(--callout-imp-text);
+        }
+
+        .callout-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 1.02rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            font-size: 0.94rem;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px 16px;
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--table-header);
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: var(--table-alt);
+        }
+
+        .source-meta {
+            background-color: var(--surface-color);
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        footer {
+            margin-top: 40px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="top-bar">
+            <div class="nav-links">
+                <a href="../index.html" class="nav-btn">📂 目录总览</a>
+                <span style="color: var(--border-color)">|</span>
+                <span style="font-size: 0.88rem; color: var(--text-muted);">{{SOURCE_REL_PATH}}</span>
+            </div>
+            <button class="theme-switch-btn" onclick="toggleTheme()" id="themeBtn">
+                🌙 切换暮色
+            </button>
+        </div>
+
+        <article class="markdown-body">
+            {{BODY_CONTENT}}
+        </article>
+
+        <div class="source-meta">
+            <span>📝 本篇 Markdown 源文件：<code>{{SOURCE_REL_PATH}}</code></span>
+            <span>⚡ 修改 Markdown 后运行 <code>build_notes.bat</code> 即可无缝同步更新</span>
+        </div>
+
+        <footer>
+            <p>1Cat-vLLM 源码精读与算子开发指南 · <a href="../index.html" style="color: inherit;">返回笔记首页</a></p>
+        </footer>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const btn = document.getElementById('themeBtn');
+            if (current === 'twilight') {
+                html.setAttribute('data-theme', 'parchment');
+                btn.innerHTML = '🌙 切换暮色';
+                localStorage.setItem('doc-theme', 'parchment');
+            } else {
+                html.setAttribute('data-theme', 'twilight');
+                btn.innerHTML = '☀️ 切换米纸';
+                localStorage.setItem('doc-theme', 'twilight');
+            }
+        }
+
+        (function() {
+            const saved = localStorage.getItem('doc-theme');
+            if (saved) {
+                document.documentElement.setAttribute('data-theme', saved);
+                const btn = document.getElementById('themeBtn');
+                if (btn) {
+                    btn.innerHTML = saved === 'twilight' ? '☀️ 切换米纸' : '🌙 切换暮色';
+                }
+            }
+        })();
+    </script>
+</body>
+</html>

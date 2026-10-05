@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="parchment">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>01 - vLLM 架构全景与 Volta (SM70) 硬件底座 - 1Cat-vLLM 源码精读</title>
+    <!-- MathJax for rendering LaTeX formulas offline/online gracefully -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root[data-theme="parchment"] {
+            --bg-color: #f7f4ec;
+            --surface-color: #eee9dc;
+            --surface-elevated: #e6dfcf;
+            --border-color: #dcd4c0;
+            --text-primary: #2d3748;
+            --text-secondary: #5c687a;
+            --text-muted: #798696;
+            --accent-primary: #a35d28;
+            --accent-glow: rgba(163, 93, 40, 0.08);
+            --code-bg: #eae3d2;
+            --code-text: #8d3a2b;
+            --pre-bg: #ece5d6;
+            --pre-text: #2d3748;
+            --callout-note-bg: #e5ede3;
+            --callout-note-border: #709775;
+            --callout-note-text: #2b5133;
+            --callout-warn-bg: #f5eedb;
+            --callout-warn-border: #c48a37;
+            --callout-warn-text: #704b12;
+            --callout-imp-bg: #e5eaf5;
+            --callout-imp-border: #5c7cb6;
+            --callout-imp-text: #1e3863;
+            --math-bg: #eee7d7;
+            --math-border: #c9bea6;
+            --table-header: #e4dccb;
+            --table-alt: #f1ecdf;
+            --tag-bg: #dfd5be;
+            --tag-text: #59472d;
+            --toggle-bg: #dfd6c2;
+        }
+
+        :root[data-theme="twilight"] {
+            --bg-color: #1a1e24;
+            --surface-color: #232931;
+            --surface-elevated: #2c343f;
+            --border-color: #39424e;
+            --text-primary: #dce1e8;
+            --text-secondary: #9da7b3;
+            --text-muted: #707b88;
+            --accent-primary: #e09f67;
+            --accent-glow: rgba(224, 159, 103, 0.1);
+            --code-bg: #15181d;
+            --code-text: #f08d70;
+            --pre-bg: #171b21;
+            --pre-text: #cdd3dc;
+            --callout-note-bg: #202b28;
+            --callout-note-border: #4d7a68;
+            --callout-note-text: #8bbfa8;
+            --callout-warn-bg: #2b251d;
+            --callout-warn-border: #8a6c38;
+            --callout-warn-text: #d9b168;
+            --callout-imp-bg: #1d2533;
+            --callout-imp-border: #4a638c;
+            --callout-imp-text: #96b5e3;
+            --math-bg: #1f252d;
+            --math-border: #3b4654;
+            --table-header: #262e38;
+            --table-alt: #1f242c;
+            --tag-bg: #323c48;
+            --tag-text: #d2a679;
+            --toggle-bg: #323b47;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.85;
+            padding: 40px 24px;
+            font-size: 16px;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .container {
+            max-width: 920px;
+            margin: 0 auto;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .nav-btn {
+            background-color: var(--surface-color);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .nav-btn:hover {
+            color: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .theme-switch-btn {
+            background-color: var(--toggle-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+
+        .theme-switch-btn:hover {
+            opacity: 0.9;
+        }
+
+        header {
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 24px;
+            margin-bottom: 36px;
+        }
+
+        h1 {
+            font-size: 2.1rem;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            line-height: 1.35;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        h2 {
+            font-size: 1.45rem;
+            margin-top: 42px;
+            margin-bottom: 18px;
+            color: var(--text-primary);
+            border-left: 4px solid var(--accent-primary);
+            padding-left: 14px;
+            font-weight: 600;
+        }
+
+        h3 {
+            font-size: 1.15rem;
+            margin-top: 24px;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        p {
+            margin-bottom: 18px;
+            color: var(--text-primary);
+        }
+
+        ul, ol {
+            margin-bottom: 18px;
+            padding-left: 24px;
+        }
+
+        li {
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        code {
+            font-family: "JetBrains Mono", Consolas, Menlo, Monaco, monospace;
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 0.88em;
+        }
+
+        pre {
+            background-color: var(--pre-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 18px;
+            overflow-x: auto;
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+
+        pre code {
+            background-color: transparent;
+            color: var(--pre-text);
+            padding: 0;
+            font-size: 0.9rem;
+        }
+
+        blockquote {
+            background-color: var(--surface-color);
+            border-left: 4px solid var(--border-color);
+            padding: 14px 18px;
+            border-radius: 0 6px 6px 0;
+            margin: 20px 0;
+            color: var(--text-secondary);
+        }
+
+        .callout {
+            border-radius: 8px;
+            padding: 18px 22px;
+            margin: 24px 0;
+        }
+
+        .callout.callout-note {
+            background-color: var(--callout-note-bg);
+            border-left: 4px solid var(--callout-note-border);
+        }
+
+        .callout.callout-note .callout-title {
+            color: var(--callout-note-text);
+        }
+
+        .callout.callout-warning {
+            background-color: var(--callout-warn-bg);
+            border-left: 4px solid var(--callout-warn-border);
+        }
+
+        .callout.callout-warning .callout-title {
+            color: var(--callout-warn-text);
+        }
+
+        .callout.callout-important {
+            background-color: var(--callout-imp-bg);
+            border-left: 4px solid var(--callout-imp-border);
+        }
+
+        .callout.callout-important .callout-title {
+            color: var(--callout-imp-text);
+        }
+
+        .callout-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 1.02rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            font-size: 0.94rem;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px 16px;
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--table-header);
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: var(--table-alt);
+        }
+
+        .source-meta {
+            background-color: var(--surface-color);
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        footer {
+            margin-top: 40px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="top-bar">
+            <div class="nav-links">
+                <a href="../index.html" class="nav-btn">📂 目录总览</a>
+                <span style="color: var(--border-color)">|</span>
+                <span style="font-size: 0.88rem; color: var(--text-muted);">markdown/01_vllm_arch_and_sm70_hardware.md</span>
+            </div>
+            <button class="theme-switch-btn" onclick="toggleTheme()" id="themeBtn">
+                🌙 切换暮色
+            </button>
+        </div>
+
+        <article class="markdown-body">
+            <h1>01 - vLLM 架构全景与 Volta (SM70) 硬件底座</h1>
+<blockquote><strong>模块标签</strong>：<code>1Cat-vLLM 源码精读</code> · <code>第 01 讲</code> · <code>CUDA 体系结构</code> · <code>SM70 Volta</code></blockquote>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h2>导读与学习目标</h2>
+<p>本讲作为全系列的第一篇基石，核心目标是<strong>打破黑盒</strong>，建立从大模型高层系统调度（vLLM）到底层 GPU 物理硬件（Tesla V100 / SM70）的全链路全景图：</p>
+<ol>
+  <li><strong>认知重塑</strong>：理解为什么大模型推理在不同阶段的硬件瓶颈完全相反（Prefill 算力受限 vs Decode 访存受限）。</li>
+  <li><strong>系统解构</strong>：理清 vLLM 的 PagedAttention 显存分页机制，以及张量元数据如何穿透到 C++/CUDA 算子层。</li>
+  <li><strong>硬件硬伤剖析</strong>：深入 Volta 架构的底层限制（为什么缺乏现代指令，为什么寄存器和 Shared Memory 极易爆仓）。</li>
+  <li><strong>数学武器</strong>：掌握 FlashAttention 核心原理与 Online Softmax 的分块递推公式。</li>
+</ol>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h2>一、为什么我们需要 vLLM？—— 大模型推理的两大阶段</h2>
+<p>在编写任何 GPU 算子前，必须清晰区分大模型运行的两个阶段：</p>
+<h3>1. Prefill（首字预填充 / 提示词阶段）</h3>
+<ul>
+  <li><strong>计算特征</strong>：输入整个 Prompt（例如 2048 个 token），所有 Token 一起并行计算 Q, K, V。</li>
+  <li><strong>瓶颈类型</strong>：<strong>Compute-Bound（算力受限）</strong>。</li>
+</ul>
+<p>  - GEMM 矩阵尺寸大（如 $M=2048, K=4096, N=4096$）；</p>
+<p>  - 能够充分占满 GPU 的 Tensor Core 阵列。</p>
+<h3>2. Decode（自回归解码 / 逐字生成阶段）</h3>
+<ul>
+  <li><strong>计算特征</strong>：每次根据前一个 token 生成下一个 token（即 $M=1$）。为了计算当前单个 Token 与历史所有上下文的注意力关联，必须从显存中完整读取历史所有已生成 Token 的 Key 和 Value（<strong>KV Cache</strong>）。</li>
+  <li><strong>瓶颈类型</strong>：<strong>Memory-Bound（访存带宽受限）</strong>。</li>
+</ul>
+<p>  - 浮点计算量极小，但显存搬运量极大。</p>
+<div class="callout callout-note">
+  <div class="callout-title">💡 说明与背景</div>
+<p>💡 算力访存比（Arithmetic Intensity）与硬件失衡</p>
+<div style="text-align:center; margin: 12px 0;">$$\text{Arithmetic Intensity} = \frac{\text{计算浮点数 (FLOPs)}}{\text{显存搬运字节数 (Bytes)}}$$</div>
+<p>在单请求 Decode 阶段，算力访存比极低（通常仅 $1 \sim 2 \text{ FLOPs/Byte}$）。</p>
+<p>而 <strong>Tesla V100</strong> 的 FP16 Tensor Core 理论算力为 <strong>125 TFLOP/s</strong>，HBM2 显存带宽为 <strong>900 GB/s</strong>。</p>
+<p>计算峰值所要求的饱和算力访存比为：</p>
+<div style="text-align:center; margin: 12px 0;">$$\frac{125 \times 10^{12} \text{ FLOP/s}}{900 \times 10^9 \text{ B/s}} \approx 138.8 \text{ FLOPs/Byte}$$</div>
+<p><strong>结论</strong>：单请求 Decode 阶段 95% 以上的时间 GPU 计算单元都在“空转等待显存读取”，显存带宽利用率直接决定了推理吞吐！</p>
+<p></p>
+</div>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h2>二、vLLM 核心骨架与数据流转</h2>
+<p>vLLM 之所以能取得数倍于原生 PyTorch 的吞吐，核心在于解决了显存碎片问题，并构建了 Iteration 级别的调度流水线：</p>
+<pre><code class="language-">1. 调度层 (Scheduler &amp; Continuous Batching)
+   └─ 不等待整个批次结束，每个 Iteration 动态调度新请求加入与完成请求释放。
+       ↓
+2. 显存管理层 (BlockManager &amp; PagedAttention)
+   └─ 模仿 OS 分页，显存划分为物理 Block (例如 16 tokens/block)，消除 60% 显存空洞。
+       ↓
+3. 执行器与元数据装配 (ModelRunner)
+   └─ 打包 GPU 输入：input_tokens, block_tables, context_lens, slot_mapping。
+       ↓
+4. C++/CUDA 桥接层 (csrc/torch_bindings.cpp)
+   └─ 通过 Torch Custom Op 零拷贝将张量物理指针送入 CUDA Kernel。
+       ↓
+5. 架构特化算子层 (Flash-V100 / SM70-TurboMind)
+   └─ 执行 Volta 深度定制的 Wide QK/PV 打包、W4A16 软解算子。</code></pre>
+<h3>Paged 机制对底层 CUDA 寻址的冲击</h3>
+<p>普通的连续矩阵乘法，地址计算是平坦线性的：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\text{Address} = \text{Base} + i \times \text{Stride}$$</div>
+<p>而在 PagedAttention 中，读写 KV Cache 变成了<strong>二级跳表寻址</strong>：</p>
+<ol>
+  <li>逻辑块号：$\text{logical\_block} = t / \text{BlockSize}$</li>
+  <li>物理块号：$\text{physical\_block} = \text{block\_tables}[\text{req\_id}, \text{logical\_block}]$</li>
+  <li>块内偏移：$\text{offset} = t \pmod{\text{BlockSize}}$</li>
+  <li>物理显存地址：$\text{physical\_addr} = \text{Base} + \text{physical\_block} \times \text{BlockBytes} + \text{offset} \times \text{TokenBytes}$</li>
+</ol>
+<div class="callout callout-warning">
+  <div class="callout-title">⚠️ 核心挑战与警告</div>
+<p>核心挑战</p>
+<p>CUDA 线程若直接按此逻辑随意读取，极易产生非合并访存（Uncoalesced Access）。因此在 Kernel 设计中，必须将同一个物理块内的连续数据以 <strong>128-bit 向量化读写（<code>float4</code> / <code>uint4</code>）</strong> 的方式协同搬运到 Shared Memory。</p>
+<p></p>
+</div>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h2>三、Volta 架构（SM70 / Tesla V100）硬件硬核剖析</h2>
+<table>
+  <tr><th>架构特性</th><th>Tesla V100 (Volta / SM70)</th><th>A100 (Ampere / SM80)</th><th>H100 (Hopper / SM90)</th></tr>
+  <tr><td><strong>Tensor Core 指令</strong></td><td><code>mma.sync.m8n8k4</code> (极小粒度 HMMA)</td><td><code>mma.sync.m16n8k16</code> (算力吞吐倍增)</td><td>WGMMA / TMA 硬件单元支持</td></tr>
+  <tr><td><strong>低比特硬件支持</strong></td><td><strong>无原生 FP8 / 无原生 INT4</strong> (仅 FP16/FP32)</td><td>原生 INT8 / INT4</td><td>原生硬件 FP8 (E4M3 / E5M2)</td></tr>
+  <tr><td><strong>全局显存 ➔ 共享内存</strong></td><td><strong>必须经由通用寄存器中转</strong> (极耗寄存器)</td><td><code>cp.async</code> 硬件异步直拷</td><td>TMA (Tensor Memory Accelerator)</td></tr>
+  <tr><td><strong>Shared Memory 架构</strong></td><td>L1 与 Shared Memory 共享 128KB</td><td>最高 164 KB，硬件异步屏障</td><td>最高 228 KB，集群间共享 (DSM)</td></tr>
+</table>
+<h3>V100 算子开发的三大“死穴”</h3>
+<ol>
+  <li><strong>寄存器溢出（Register Spilling）</strong>：</li>
+</ol>
+<p>   因为缺乏 <code>cp.async</code> 指令，显存到共享内存必须走 <code>Global Memory -&gt; Register -&gt; Shared Memory</code>。当线程占用寄存器过多（如超过 64~96 个），GPU 的 Occupancy（活跃 Warp 占比）会断崖式下降，无法掩盖流水线延迟。</p>
+<ol>
+  <li><strong>HMMA 指令发射瓶颈</strong>：</li>
+</ol>
+<p>   Volta 的硬件 Tensor Core 每次只能算一个 $8 \times 8 \times 4$ 的极小矩阵。为了计算一个 $64 \times 64 \times 16$ 的 Block Tile，需要发射海量的 HMMA 汇编指令，容易让指令发射单元（Instruction Issue Unit）跑满阻塞。</p>
+<ol>
+  <li><strong>缺乏低比特硬件单元</strong>：</li>
+</ol>
+<p>   现代量化大模型（如 NVFP4 / W4A16 / FP8）无法直接调用硬件 Tensor Core。必须在软件层面通过<strong>位移、掩码运算在寄存器内解包为 FP16</strong>，再输入 HMMA 执行。</p>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h2>四、Attention 核心演进：从朴素实现到 Online Softmax</h2>
+<p>标准 Attention 公式：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\text{Attention}(Q, K, V) = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right) V$$</div>
+<h3>1. 朴素实现的 $O(N^2)$ 显存灾难</h3>
+<p>若依次执行 $S = QK^T \to P = \text{Softmax}(S) \to O = PV$：</p>
+<ul>
+  <li>必须将中间矩阵 $S \in \mathbb{R}^{N \times N}$ 和 $P \in \mathbb{R}^{N \times N}$ 完整写回 HBM 显存再读出；</li>
+  <li>显存占用与显存带宽往返都是 $O(N^2)$。当 $N=64\text{K}$ 时，单矩阵就占数十 GB，直接 OOM。</li>
+</ul>
+<h3>2. FlashAttention 的关键：Online Softmax（在线增量更新）</h3>
+<p>FlashAttention 将 $Q, K, V$ 分块载入片上 <strong>Shared Memory</strong>，全程不向 HBM 写出中间大矩阵。</p>
+<p>核心数学技巧在于：<strong>在只看到部分 $K$ 向量时，如何增量维护全局 Softmax 归一化？</strong></p>
+<div class="callout callout-important">
+  <div class="callout-title">📐 重要公式与结论</div>
+<p>📐 Online Softmax 递推公式</p>
+<p>设前一段的局部最大值为 $m^{(1)}$，指数和为 $l^{(1)}$，部分输出为 $O^{(1)}$；</p>
+<p>新进入的一个块局部最大值为 $m^{(2)}$，局部指数和为 $l^{(2)}$：</p>
+<p>1. <strong>更新全局最大值</strong>：</p>
+<div style="text-align:center; margin: 12px 0;">$$m^{\text{new}} = \max\left(m^{(1)}, m^{(2)}\right)$$</div>
+<p>2. <strong>更新归一化分母（指数和）</strong>：</p>
+<div style="text-align:center; margin: 12px 0;">$$l^{\text{new}} = e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)} + e^{m^{(2)} - m^{\text{new}}} \cdot l^{(2)}$$</div>
+<p>3. <strong>输出向量增量修正</strong>：</p>
+<div style="text-align:center; margin: 12px 0;">$$O^{\text{new}} = \frac{e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)} \cdot O^{(1)} + e^{m^{(2)} - m^{\text{new}}} \cdot \left(P^{(2)} V^{(2)}\right)}{l^{\text{new}}}$$</div>
+<p></p>
+</div>
+<p>通过这种在片上寄存器里“滚动缩放”的方式，算力访存比大幅提高，显存读写复杂度降至 $O(N)$。</p>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h2>五、1Cat-vLLM 在 V100 上的破局：PR #286 的核心线索</h2>
+<p>官方旧版 FlashAttention 在 V100 上由于没有针对 Volta 硬件微架构深度调优，吞吐长期停留在 <strong>17.92 TFLOP/s</strong>（不足硬件峰值的 15%）。</p>
+<p>1Cat-vLLM 在 <strong>PR #286</strong> 中完成了关键蜕变：</p>
+<ul>
+  <li><strong>Split-D</strong>：将较大的 Head Dimension 切分成适合 Volta 共享内存与寄存器预算的小 Tile；</li>
+  <li><strong>GQA-packed Wide QK/PV GEMM</strong>：将 6 个共享同一组 KV 的 Query Heads 打包成一个更宽的 GEMM，大幅降低指令发射开销并提高 Tensor Core 计算密度，一举将吞吐提升至 <strong>≈60.8 TFLOP/s</strong>！</li>
+</ul>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h2>✍️ 我的个人笔记 / 思考记录插槽</h2>
+<blockquote><em>提示：你可以在此处直接添加你阅读过程中的心得、疑问或试验记录，重新构建后将自动呈现在护眼 HTML 中。</em></blockquote>
+<ul>
+  <li><input type="checkbox" disabled style="margin-right: 6px;"> <strong>思考题 1</strong>：在 GQA 中，多个 Q Head 共享同一个 KV Head。如果每个 Q 分别起一个 Kernel，会造成哪些重复访存？</li>
+  <li><input type="checkbox" disabled style="margin-right: 6px;"> <strong>思考题 2</strong>：在计算 $QK^T$ 时，$K$ 在内存中原本是以行存储的，转置后按列读取。Shared Memory 的 32 个 Bank 会发生什么？如何通过 Padding 或 Swizzle 消除？</li>
+</ul>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<p><em>本文档为 1Cat-vLLM 系列学习笔记 · 源文件位于 <code>learn_notes/markdown/01_vllm_arch_and_sm70_hardware.md</code></em></p>
+        </article>
+
+        <div class="source-meta">
+            <span>📝 本篇 Markdown 源文件：<code>markdown/01_vllm_arch_and_sm70_hardware.md</code></span>
+            <span>⚡ 修改 Markdown 后运行 <code>build_notes.bat</code> 即可无缝同步更新</span>
+        </div>
+
+        <footer>
+            <p>1Cat-vLLM 源码精读与算子开发指南 · <a href="../index.html" style="color: inherit;">返回笔记首页</a></p>
+        </footer>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const btn = document.getElementById('themeBtn');
+            if (current === 'twilight') {
+                html.setAttribute('data-theme', 'parchment');
+                btn.innerHTML = '🌙 切换暮色';
+                localStorage.setItem('doc-theme', 'parchment');
+            } else {
+                html.setAttribute('data-theme', 'twilight');
+                btn.innerHTML = '☀️ 切换米纸';
+                localStorage.setItem('doc-theme', 'twilight');
+            }
+        }
+
+        (function() {
+            const saved = localStorage.getItem('doc-theme');
+            if (saved) {
+                document.documentElement.setAttribute('data-theme', saved);
+                const btn = document.getElementById('themeBtn');
+                if (btn) {
+                    btn.innerHTML = saved === 'twilight' ? '☀️ 切换米纸' : '🌙 切换暮色';
+                }
+            }
+        })();
+    </script>
+</body>
+</html>

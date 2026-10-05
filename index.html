@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="parchment">
+<head>
+    <meta charset="UTF-8">
+    <title>1Cat-vLLM 学习笔记索引目录</title>
+    <style>
+        :root[data-theme="parchment"] {
+            --bg-color: #f7f4ec;
+            --surface-color: #eee9dc;
+            --border-color: #dcd4c0;
+            --text-primary: #2d3748;
+            --text-muted: #798696;
+            --accent-primary: #a35d28;
+            --code-bg: #eae3d2;
+            --toggle-bg: #dfd6c2;
+        }
+        :root[data-theme="twilight"] {
+            --bg-color: #1a1e24;
+            --surface-color: #232931;
+            --border-color: #39424e;
+            --text-primary: #dce1e8;
+            --text-muted: #707b88;
+            --accent-primary: #e09f67;
+            --code-bg: #15181d;
+            --toggle-bg: #323b47;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.8;
+            padding: 50px 24px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.88em; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="margin-bottom: 8px;">📚 1Cat-vLLM 源码精读与算子开发指南</h1>
+        <p style="color: var(--text-muted); margin-bottom: 30px;">
+            目录管理体系：修改 <code>learn_notes/markdown/*.md</code> 源码后，双击 <code>build_notes.bat</code> 即可全自动重新编译！
+        </p>
+        <ul style="list-style: none; padding: 0;">
+            
+        <li style="margin-bottom: 14px; padding: 12px 16px; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 8px;">
+            <a href="html/01_vllm_arch_and_sm70_hardware.html" style="font-size: 1.15rem; font-weight: 600; color: var(--accent-primary); text-decoration: none;">
+                📖 01 - vLLM 架构全景与 Volta (SM70) 硬件底座
+            </a>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;">
+                源文件：<code>markdown/01_vllm_arch_and_sm70_hardware.md</code> · 已生成：<code>html/01_vllm_arch_and_sm70_hardware.html</code>
+            </div>
+        </li>
+        
+        </ul>
+    </div>
+</body>
+</html>

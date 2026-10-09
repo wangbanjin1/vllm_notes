@@ -58,8 +58,23 @@ def parse_inline(text: str) -> str:
     return text
 
 
-def md_to_html(md_text: str) -> tuple[str, str]:
-    """简单的纯 Python Markdown 解析器，支持代码块、表格、Callouts 和公式"""
+def make_slug(text: str, used_ids: dict) -> str:
+    # 移除 Markdown / 行内语法及标点符号
+    clean = re.sub(r'[`\*_#\[\]\(\)\$\<\>\&\"]', '', text).strip()
+    slug = re.sub(r'[\s\t\n]+', '-', clean)
+    slug = re.sub(r'[^\w\u4e00-\u9fa5\-]+', '', slug).strip('-')
+    if not slug:
+        slug = "section"
+    base = slug
+    count = used_ids.get(base, 0)
+    used_ids[base] = count + 1
+    if count > 0:
+        return f"{base}-{count}"
+    return base
+
+
+def md_to_html(md_text: str) -> tuple[str, str, str]:
+    """简单的纯 Python Markdown 解析器，支持代码块、表格、Callouts、公式与大纲目录"""
     lines = md_text.splitlines()
     html_out = []
     title = "学习笔记"
@@ -77,6 +92,9 @@ def md_to_html(md_text: str) -> tuple[str, str]:
     in_callout = False
     callout_type = "note"
     callout_buf = []
+
+    used_ids = {}
+    headings = []
 
     def flush_list():
         nonlocal in_list, html_out
@@ -126,12 +144,29 @@ def md_to_html(md_text: str) -> tuple[str, str]:
                 flush_table()
                 flush_callout()
                 in_code_block = True
-                code_lang = line.strip()[3:].strip()
+                code_lang = line.strip()[3:].strip().lower()
                 code_buf = []
             else:
                 in_code_block = False
                 escaped = html.escape("\n".join(code_buf))
-                html_out.append(f'<pre><code class="language-{code_lang}">{escaped}</code></pre>')
+                display_lang = code_lang.upper() if code_lang else "TEXT"
+                hl_class = f"language-{code_lang}" if code_lang else "language-plaintext"
+                block_html = (
+                    f'<div class="code-block">\n'
+                    f'  <div class="code-header">\n'
+                    f'    <span class="code-lang">{display_lang}</span>\n'
+                    f'    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">\n'
+                    f'      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">\n'
+                    f'        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>\n'
+                    f'        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>\n'
+                    f'      </svg>\n'
+                    f'      <span>复制</span>\n'
+                    f'    </button>\n'
+                    f'  </div>\n'
+                    f'  <pre><code class="{hl_class}">{escaped}</code></pre>\n'
+                    f'</div>'
+                )
+                html_out.append(block_html)
                 code_buf = []
             i += 1
             continue
@@ -202,9 +237,18 @@ def md_to_html(md_text: str) -> tuple[str, str]:
             flush_callout()
             level = len(heading_match.group(1))
             htext = heading_match.group(2).strip()
-            if level == 1:
-                title = htext
-            html_out.append(f"<h{level}>{parse_inline(htext)}</h{level}>")
+            if level == 1 and title == "学习笔记":
+                title = re.sub(r'[`\*_#\[\]\(\)\$]', '', htext).strip()
+            
+            slug = make_slug(htext, used_ids)
+            html_out.append(f'<h{level} id="{slug}">{parse_inline(htext)}</h{level}>')
+            
+            if level in (2, 3, 4):
+                headings.append({
+                    "level": level,
+                    "text": htext,
+                    "id": slug
+                })
             i += 1
             continue
 
@@ -252,7 +296,23 @@ def md_to_html(md_text: str) -> tuple[str, str]:
     flush_table()
     flush_callout()
 
-    return title, "\n".join(html_out)
+    # 构建左侧大纲 HTML
+    toc_items = []
+    for h in headings:
+        clean_text = re.sub(r'[`\*_#\[\]\(\)\$]', '', h["text"]).strip()
+        escaped_title = html.escape(clean_text)
+        inline_html = parse_inline(h["text"])
+        toc_items.append(
+            f'  <li class="toc-item toc-level-{h["level"]}">'
+            f'<a href="#{h["id"]}" class="toc-link" title="{escaped_title}">{inline_html}</a></li>'
+        )
+
+    if toc_items:
+        toc_html = '<ul class="toc-list">\n' + '\n'.join(toc_items) + '\n</ul>'
+    else:
+        toc_html = '<div class="toc-empty">暂无章节大纲</div>'
+
+    return title, "\n".join(html_out), toc_html
 
 
 def build_all():
@@ -270,11 +330,12 @@ def build_all():
         with open(md_path, "r", encoding="utf-8") as f:
             md_content = f.read()
 
-        title, body_html = md_to_html(md_content)
+        title, body_html, toc_html = md_to_html(md_content)
         rel_path = f"markdown/{md_path.name}"
 
         page_html = template.replace("{{TITLE}}", title)
         page_html = page_html.replace("{{BODY_CONTENT}}", body_html)
+        page_html = page_html.replace("{{TOC_CONTENT}}", toc_html)
         page_html = page_html.replace("{{SOURCE_REL_PATH}}", rel_path)
 
         out_html_path = HTML_DIR / f"{md_path.stem}.html"

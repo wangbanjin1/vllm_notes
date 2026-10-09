@@ -18,6 +18,8 @@
         };
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Highlight.js for code syntax highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <style>
         :root[data-theme="parchment"] {
             --bg-color: #f7f4ec;
@@ -90,20 +92,260 @@
             transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
         }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
             background-color: var(--bg-color);
             color: var(--text-primary);
             line-height: 1.85;
-            padding: 40px 24px;
+            padding: 30px 16px;
             font-size: 16px;
             text-rendering: optimizeLegibility;
             -webkit-font-smoothing: antialiased;
         }
 
-        .container {
-            max-width: 920px;
+        .layout-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            max-width: 1360px;
             margin: 0 auto;
+            gap: 36px;
+            position: relative;
+        }
+
+        /* 左侧大纲导航栏 */
+        .sidebar-toc {
+            width: 280px;
+            flex-shrink: 0;
+            position: sticky;
+            top: 24px;
+            max-height: calc(100vh - 48px);
+            display: flex;
+            flex-direction: column;
+            transition: all 0.25s ease;
+            z-index: 90;
+        }
+
+        .toc-card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 48px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+        }
+
+        .toc-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 12px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .toc-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .toc-title svg {
+            color: var(--accent-primary);
+        }
+
+        .toc-action-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .toc-action-btn:hover {
+            background: var(--surface-elevated);
+            color: var(--accent-primary);
+            border-color: var(--border-color);
+        }
+
+        .toc-body {
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 4px;
+        }
+
+        .toc-body::-webkit-scrollbar {
+            width: 5px;
+        }
+        .toc-body::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .toc-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .toc-item {
+            margin: 2px 0;
+            line-height: 1.4;
+        }
+
+        .toc-level-2 {
+            margin-top: 8px;
+            padding-left: 0;
+        }
+
+        .toc-level-3 {
+            padding-left: 14px;
+        }
+
+        .toc-level-4 {
+            padding-left: 26px;
+        }
+
+        .toc-link {
+            display: block;
+            padding: 5px 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.86rem;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-left: 2px solid transparent;
+        }
+
+        .toc-level-2 > .toc-link {
+            font-weight: 600;
+            font-size: 0.88rem;
+        }
+
+        .toc-level-3 > .toc-link {
+            font-size: 0.83rem;
+        }
+
+        .toc-level-4 > .toc-link {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .toc-link:hover {
+            color: var(--accent-primary);
+            background: var(--accent-glow);
+        }
+
+        .toc-link.active {
+            color: var(--accent-primary);
+            background: var(--accent-glow);
+            border-left-color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        .toc-empty {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            padding: 10px 0;
+            text-align: center;
+        }
+
+        .main-content {
+            flex: 1;
+            min-width: 0;
+            max-width: 920px;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        /* 侧边栏收起状态 */
+        body.toc-collapsed .sidebar-toc {
+            display: none;
+        }
+
+        body.toc-collapsed #expandTocBtn {
+            display: inline-flex !important;
+        }
+
+        /* 移动端/小屏幕样式 */
+        .mobile-toc-toggle {
+            display: none;
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            z-index: 999;
+            background: var(--accent-primary);
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            padding: 10px 18px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toc-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(2px);
+            z-index: 990;
+        }
+
+        @media (max-width: 1120px) {
+            .sidebar-toc {
+                position: fixed;
+                top: 0;
+                left: -320px;
+                width: 300px;
+                height: 100vh;
+                max-height: 100vh;
+                z-index: 1000;
+                padding: 16px;
+                background: var(--bg-color);
+            }
+
+            .sidebar-toc.open {
+                left: 0;
+                box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+            }
+
+            .mobile-toc-toggle {
+                display: inline-flex;
+            }
+
+            body.toc-drawer-open .toc-backdrop {
+                display: block;
+            }
+
+            #expandTocBtn {
+                display: none !important;
+            }
         }
 
         .top-bar {
@@ -132,6 +374,7 @@
             display: inline-flex;
             align-items: center;
             gap: 4px;
+            cursor: pointer;
         }
 
         .nav-btn:hover {
@@ -161,6 +404,10 @@
             border-bottom: 2px solid var(--border-color);
             padding-bottom: 24px;
             margin-bottom: 36px;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            scroll-margin-top: 36px;
         }
 
         h1 {
@@ -230,21 +477,166 @@
             font-size: 0.88em;
         }
 
-        pre {
+        .code-block {
             background-color: var(--pre-bg);
             border: 1px solid var(--border-color);
             border-radius: 8px;
-            padding: 18px;
+            margin: 24px 0;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 7px 14px;
+            background-color: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.78rem;
+            user-select: none;
+        }
+
+        .code-lang {
+            font-family: "JetBrains Mono", Consolas, Menlo, Monaco, monospace;
+            font-weight: 700;
+            color: var(--accent-primary);
+            letter-spacing: 0.5px;
+        }
+
+        .copy-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            color: var(--text-muted);
+            padding: 3px 9px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            color: var(--accent-primary);
+            border-color: var(--accent-primary);
+            background: var(--surface-elevated);
+        }
+
+        .copy-btn.copied {
+            color: #2b5133;
+            border-color: #709775;
+            background: #e5ede3;
+        }
+
+        :root[data-theme="twilight"] .copy-btn.copied {
+            color: #8bbfa8;
+            border-color: #4d7a68;
+            background: #202b28;
+        }
+
+        pre {
+            background-color: transparent;
+            border: none;
+            padding: 16px 18px;
             overflow-x: auto;
-            margin: 20px 0;
-            line-height: 1.6;
+            margin: 0;
+            line-height: 1.65;
         }
 
         pre code {
             background-color: transparent;
             color: var(--pre-text);
             padding: 0;
+            border-radius: 0;
             font-size: 0.9rem;
+            font-family: "JetBrains Mono", Consolas, Menlo, Monaco, monospace;
+            display: block;
+        }
+
+        /* 语法高亮样式 (米纸主题 Parchment) */
+        :root[data-theme="parchment"] .hljs-comment,
+        :root[data-theme="parchment"] .hljs-quote {
+            color: #798696;
+            font-style: italic;
+        }
+        :root[data-theme="parchment"] .hljs-keyword,
+        :root[data-theme="parchment"] .hljs-selector-tag {
+            color: #b83a21;
+            font-weight: 600;
+        }
+        :root[data-theme="parchment"] .hljs-type,
+        :root[data-theme="parchment"] .hljs-class .hljs-title {
+            color: #8d3a2b;
+            font-weight: 600;
+        }
+        :root[data-theme="parchment"] .hljs-string,
+        :root[data-theme="parchment"] .hljs-addition {
+            color: #2c7a3f;
+        }
+        :root[data-theme="parchment"] .hljs-number,
+        :root[data-theme="parchment"] .hljs-literal {
+            color: #a35d28;
+            font-weight: 600;
+        }
+        :root[data-theme="parchment"] .hljs-title,
+        :root[data-theme="parchment"] .hljs-function {
+            color: #1e3863;
+            font-weight: 600;
+        }
+        :root[data-theme="parchment"] .hljs-built_in,
+        :root[data-theme="parchment"] .hljs-symbol {
+            color: #2b5133;
+        }
+        :root[data-theme="parchment"] .hljs-meta {
+            color: #704b12;
+        }
+        :root[data-theme="parchment"] .hljs-variable,
+        :root[data-theme="parchment"] .hljs-template-variable {
+            color: #2d3748;
+        }
+
+        /* 语法高亮样式 (暮色主题 Twilight) */
+        :root[data-theme="twilight"] .hljs-comment,
+        :root[data-theme="twilight"] .hljs-quote {
+            color: #636e7b;
+            font-style: italic;
+        }
+        :root[data-theme="twilight"] .hljs-keyword,
+        :root[data-theme="twilight"] .hljs-selector-tag {
+            color: #e09f67;
+            font-weight: 600;
+        }
+        :root[data-theme="twilight"] .hljs-type,
+        :root[data-theme="twilight"] .hljs-class .hljs-title {
+            color: #e5c07b;
+            font-weight: 600;
+        }
+        :root[data-theme="twilight"] .hljs-string,
+        :root[data-theme="twilight"] .hljs-addition {
+            color: #98c379;
+        }
+        :root[data-theme="twilight"] .hljs-number,
+        :root[data-theme="twilight"] .hljs-literal {
+            color: #d19a66;
+            font-weight: 600;
+        }
+        :root[data-theme="twilight"] .hljs-title,
+        :root[data-theme="twilight"] .hljs-function {
+            color: #61afef;
+            font-weight: 600;
+        }
+        :root[data-theme="twilight"] .hljs-built_in,
+        :root[data-theme="twilight"] .hljs-symbol {
+            color: #56b6c2;
+        }
+        :root[data-theme="twilight"] .hljs-meta {
+            color: #be5046;
+        }
+        :root[data-theme="twilight"] .hljs-variable,
+        :root[data-theme="twilight"] .hljs-template-variable {
+            color: #abb2bf;
         }
 
         blockquote {
@@ -347,30 +739,82 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="top-bar">
-            <div class="nav-links">
-                <a href="../index.html" class="nav-btn">目录总览</a>
-                <span style="color: var(--border-color)">|</span>
-                <span style="font-size: 0.88rem; color: var(--text-muted);">{{SOURCE_REL_PATH}}</span>
+    <!-- 移动端大纲浮动按钮与背景遮罩 -->
+    <button class="mobile-toc-toggle" onclick="toggleMobileToc()" id="mobileTocBtn" title="展开/收起目录大纲">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+        </svg>
+        <span>目录</span>
+    </button>
+    <div class="toc-backdrop" onclick="toggleMobileToc()"></div>
+
+    <div class="layout-wrapper">
+        <!-- 左侧大纲预览 -->
+        <aside class="sidebar-toc" id="sidebarToc">
+            <div class="toc-card">
+                <div class="toc-header">
+                    <div class="toc-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        <span>大纲预览</span>
+                    </div>
+                    <button class="toc-action-btn" onclick="toggleDesktopToc()" title="收起大纲">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                </div>
+                <nav class="toc-body">
+                    {{TOC_CONTENT}}
+                </nav>
             </div>
-            <button class="theme-switch-btn" onclick="toggleTheme()" id="themeBtn">
-                切换暮色
-            </button>
-        </div>
+        </aside>
 
-        <article class="markdown-body">
-            {{BODY_CONTENT}}
-        </article>
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <div class="container">
+                <div class="top-bar">
+                    <div class="nav-links">
+                        <button class="nav-btn" id="expandTocBtn" onclick="toggleDesktopToc()" style="display: none;" title="展开大纲侧边栏">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                            <span>显示大纲</span>
+                        </button>
+                        <a href="../index.html" class="nav-btn">目录总览</a>
+                        <span style="color: var(--border-color)">|</span>
+                        <span style="font-size: 0.88rem; color: var(--text-muted);">{{SOURCE_REL_PATH}}</span>
+                    </div>
+                    <button class="theme-switch-btn" onclick="toggleTheme()" id="themeBtn">
+                        切换暮色
+                    </button>
+                </div>
 
-        <div class="source-meta">
-            <span>Markdown 源文件：<code>{{SOURCE_REL_PATH}}</code></span>
-            <span>修改 Markdown 后运行 <code>build_notes.bat</code> 即可同步更新</span>
-        </div>
+                <article class="markdown-body">
+                    {{BODY_CONTENT}}
+                </article>
 
-        <footer>
-            <p>1Cat-vLLM 源码精读与算子开发指南 · <a href="../index.html" style="color: inherit;">返回笔记首页</a></p>
-        </footer>
+                <div class="source-meta">
+                    <span>Markdown 源文件：<code>{{SOURCE_REL_PATH}}</code></span>
+                    <span>修改 Markdown 后运行 <code>build_notes.bat</code> 即可同步更新</span>
+                </div>
+
+                <footer>
+                    <p>1Cat-vLLM 源码精读与算子开发指南 · <a href="../index.html" style="color: inherit;">返回笔记首页</a></p>
+                </footer>
+            </div>
+        </main>
     </div>
 
     <script>
@@ -389,6 +833,110 @@
             }
         }
 
+        // 侧边栏收起/展开
+        function toggleDesktopToc() {
+            const isCollapsed = document.body.classList.toggle('toc-collapsed');
+            localStorage.setItem('toc-collapsed', isCollapsed ? 'true' : 'false');
+        }
+
+        // 移动端侧边栏切换
+        function toggleMobileToc() {
+            const sidebar = document.getElementById('sidebarToc');
+            const isOpen = sidebar.classList.toggle('open');
+            document.body.classList.toggle('toc-drawer-open', isOpen);
+        }
+
+        // 点击大纲链接时（在窄屏/抽屉模式下）自动收起抽屉
+        document.addEventListener('click', function(e) {
+            const link = e.target.closest('.toc-link');
+            if (link && window.innerWidth <= 1120) {
+                const sidebar = document.getElementById('sidebarToc');
+                if (sidebar) sidebar.classList.remove('open');
+                document.body.classList.remove('toc-drawer-open');
+            }
+        });
+
+        // 滚动监听与大纲高亮 (Scroll-Spy)
+        function initScrollSpy() {
+            const links = Array.from(document.querySelectorAll('.toc-link'));
+            if (!links.length) return;
+
+            const targets = links.map(link => {
+                const href = link.getAttribute('href');
+                if (!href || !href.startsWith('#')) return null;
+                const id = decodeURIComponent(href.slice(1));
+                return {
+                    link: link,
+                    element: document.getElementById(id)
+                };
+            }).filter(item => item && item.element !== null);
+
+            if (!targets.length) return;
+
+            function onScroll() {
+                const scrollPos = window.scrollY + 100;
+                let currentItem = targets[0];
+                for (let i = 0; i < targets.length; i++) {
+                    if (targets[i].element.offsetTop <= scrollPos) {
+                        currentItem = targets[i];
+                    } else {
+                        break;
+                    }
+                }
+                targets.forEach(item => {
+                    if (item === currentItem) {
+                        if (!item.link.classList.contains('active')) {
+                            item.link.classList.add('active');
+                            item.link.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                        }
+                    } else {
+                        item.link.classList.remove('active');
+                    }
+                });
+            }
+
+            window.addEventListener('scroll', onScroll, { passive: true });
+            onScroll();
+        }
+
+        // 代码一键复制
+        function copyCode(btn) {
+            const block = btn.closest('.code-block');
+            const code = block ? block.querySelector('pre code') : null;
+            if (!code) return;
+            const text = code.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const origHtml = btn.innerHTML;
+                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> <span>已复制!</span>';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.innerHTML = origHtml;
+                    btn.classList.remove('copied');
+                }, 2000);
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                btn.innerHTML = '<span>已复制!</span>';
+                setTimeout(() => { btn.innerHTML = '<span>复制</span>'; }, 2000);
+            });
+        }
+
+        // 初始化代码语法高亮
+        function initHighlight() {
+            if (window.hljs) {
+                try {
+                    hljs.registerAliases(['cuda', 'cu', 'cuh'], { languageName: 'cpp' });
+                } catch(e) {}
+                document.querySelectorAll('pre code').forEach((el) => {
+                    hljs.highlightElement(el);
+                });
+            }
+        }
+
         (function() {
             const saved = localStorage.getItem('doc-theme');
             if (saved) {
@@ -398,6 +946,14 @@
                     btn.innerHTML = saved === 'twilight' ? '切换米纸' : '切换暮色';
                 }
             }
+
+            const collapsed = localStorage.getItem('toc-collapsed');
+            if (collapsed === 'true') {
+                document.body.classList.add('toc-collapsed');
+            }
+
+            initScrollSpy();
+            initHighlight();
         })();
     </script>
 </body>

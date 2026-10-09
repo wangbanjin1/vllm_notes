@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>01 - vLLM 架构全景与 Volta (SM70) 硬件底座 - 1Cat-vLLM 源码精读</title>
+    <title>01 - vLLM 架构全景与 Volta SM70 硬件底座 - 1Cat-vLLM 源码精读</title>
     <!-- MathJax for rendering LaTeX formulas offline/online gracefully -->
     <script>
         window.MathJax = {
@@ -18,6 +18,8 @@
         };
     </script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Highlight.js for code syntax highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <style>
         :root[data-theme="parchment"] {
             --bg-color: #f7f4ec;
@@ -90,20 +92,260 @@
             transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
         }
 
+        html {
+            scroll-behavior: smooth;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
             background-color: var(--bg-color);
             color: var(--text-primary);
             line-height: 1.85;
-            padding: 40px 24px;
+            padding: 30px 16px;
             font-size: 16px;
             text-rendering: optimizeLegibility;
             -webkit-font-smoothing: antialiased;
         }
 
-        .container {
-            max-width: 920px;
+        .layout-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            max-width: 1360px;
             margin: 0 auto;
+            gap: 36px;
+            position: relative;
+        }
+
+        /* 左侧大纲导航栏 */
+        .sidebar-toc {
+            width: 280px;
+            flex-shrink: 0;
+            position: sticky;
+            top: 24px;
+            max-height: calc(100vh - 48px);
+            display: flex;
+            flex-direction: column;
+            transition: all 0.25s ease;
+            z-index: 90;
+        }
+
+        .toc-card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 48px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+        }
+
+        .toc-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 12px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .toc-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .toc-title svg {
+            color: var(--accent-primary);
+        }
+
+        .toc-action-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .toc-action-btn:hover {
+            background: var(--surface-elevated);
+            color: var(--accent-primary);
+            border-color: var(--border-color);
+        }
+
+        .toc-body {
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 4px;
+        }
+
+        .toc-body::-webkit-scrollbar {
+            width: 5px;
+        }
+        .toc-body::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .toc-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .toc-item {
+            margin: 2px 0;
+            line-height: 1.4;
+        }
+
+        .toc-level-2 {
+            margin-top: 8px;
+            padding-left: 0;
+        }
+
+        .toc-level-3 {
+            padding-left: 14px;
+        }
+
+        .toc-level-4 {
+            padding-left: 26px;
+        }
+
+        .toc-link {
+            display: block;
+            padding: 5px 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.86rem;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-left: 2px solid transparent;
+        }
+
+        .toc-level-2 > .toc-link {
+            font-weight: 600;
+            font-size: 0.88rem;
+        }
+
+        .toc-level-3 > .toc-link {
+            font-size: 0.83rem;
+        }
+
+        .toc-level-4 > .toc-link {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .toc-link:hover {
+            color: var(--accent-primary);
+            background: var(--accent-glow);
+        }
+
+        .toc-link.active {
+            color: var(--accent-primary);
+            background: var(--accent-glow);
+            border-left-color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        .toc-empty {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            padding: 10px 0;
+            text-align: center;
+        }
+
+        .main-content {
+            flex: 1;
+            min-width: 0;
+            max-width: 920px;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        /* 侧边栏收起状态 */
+        body.toc-collapsed .sidebar-toc {
+            display: none;
+        }
+
+        body.toc-collapsed #expandTocBtn {
+            display: inline-flex !important;
+        }
+
+        /* 移动端/小屏幕样式 */
+        .mobile-toc-toggle {
+            display: none;
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            z-index: 999;
+            background: var(--accent-primary);
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            padding: 10px 18px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toc-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(2px);
+            z-index: 990;
+        }
+
+        @media (max-width: 1120px) {
+            .sidebar-toc {
+                position: fixed;
+                top: 0;
+                left: -320px;
+                width: 300px;
+                height: 100vh;
+                max-height: 100vh;
+                z-index: 1000;
+                padding: 16px;
+                background: var(--bg-color);
+            }
+
+            .sidebar-toc.open {
+                left: 0;
+                box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+            }
+
+            .mobile-toc-toggle {
+                display: inline-flex;
+            }
+
+            body.toc-drawer-open .toc-backdrop {
+                display: block;
+            }
+
+            #expandTocBtn {
+                display: none !important;
+            }
         }
 
         .top-bar {
@@ -132,6 +374,7 @@
             display: inline-flex;
             align-items: center;
             gap: 4px;
+            cursor: pointer;
         }
 
         .nav-btn:hover {
@@ -161,6 +404,10 @@
             border-bottom: 2px solid var(--border-color);
             padding-bottom: 24px;
             margin-bottom: 36px;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            scroll-margin-top: 36px;
         }
 
         h1 {
@@ -230,21 +477,166 @@
             font-size: 0.88em;
         }
 
-        pre {
+        .code-block {
             background-color: var(--pre-bg);
             border: 1px solid var(--border-color);
             border-radius: 8px;
-            padding: 18px;
+            margin: 24px 0;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 7px 14px;
+            background-color: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.78rem;
+            user-select: none;
+        }
+
+        .code-lang {
+            font-family: "JetBrains Mono", Consolas, Menlo, Monaco, monospace;
+            font-weight: 700;
+            color: var(--accent-primary);
+            letter-spacing: 0.5px;
+        }
+
+        .copy-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            color: var(--text-muted);
+            padding: 3px 9px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            color: var(--accent-primary);
+            border-color: var(--accent-primary);
+            background: var(--surface-elevated);
+        }
+
+        .copy-btn.copied {
+            color: #2b5133;
+            border-color: #709775;
+            background: #e5ede3;
+        }
+
+        :root[data-theme="twilight"] .copy-btn.copied {
+            color: #8bbfa8;
+            border-color: #4d7a68;
+            background: #202b28;
+        }
+
+        pre {
+            background-color: transparent;
+            border: none;
+            padding: 16px 18px;
             overflow-x: auto;
-            margin: 20px 0;
-            line-height: 1.6;
+            margin: 0;
+            line-height: 1.65;
         }
 
         pre code {
             background-color: transparent;
             color: var(--pre-text);
             padding: 0;
+            border-radius: 0;
             font-size: 0.9rem;
+            font-family: "JetBrains Mono", Consolas, Menlo, Monaco, monospace;
+            display: block;
+        }
+
+        /* 语法高亮样式 (米纸主题 Parchment) */
+        :root[data-theme="parchment"] .hljs-comment,
+        :root[data-theme="parchment"] .hljs-quote {
+            color: #798696;
+            font-style: italic;
+        }
+        :root[data-theme="parchment"] .hljs-keyword,
+        :root[data-theme="parchment"] .hljs-selector-tag {
+            color: #b83a21;
+            font-weight: 600;
+        }
+        :root[data-theme="parchment"] .hljs-type,
+        :root[data-theme="parchment"] .hljs-class .hljs-title {
+            color: #8d3a2b;
+            font-weight: 600;
+        }
+        :root[data-theme="parchment"] .hljs-string,
+        :root[data-theme="parchment"] .hljs-addition {
+            color: #2c7a3f;
+        }
+        :root[data-theme="parchment"] .hljs-number,
+        :root[data-theme="parchment"] .hljs-literal {
+            color: #a35d28;
+            font-weight: 600;
+        }
+        :root[data-theme="parchment"] .hljs-title,
+        :root[data-theme="parchment"] .hljs-function {
+            color: #1e3863;
+            font-weight: 600;
+        }
+        :root[data-theme="parchment"] .hljs-built_in,
+        :root[data-theme="parchment"] .hljs-symbol {
+            color: #2b5133;
+        }
+        :root[data-theme="parchment"] .hljs-meta {
+            color: #704b12;
+        }
+        :root[data-theme="parchment"] .hljs-variable,
+        :root[data-theme="parchment"] .hljs-template-variable {
+            color: #2d3748;
+        }
+
+        /* 语法高亮样式 (暮色主题 Twilight) */
+        :root[data-theme="twilight"] .hljs-comment,
+        :root[data-theme="twilight"] .hljs-quote {
+            color: #636e7b;
+            font-style: italic;
+        }
+        :root[data-theme="twilight"] .hljs-keyword,
+        :root[data-theme="twilight"] .hljs-selector-tag {
+            color: #e09f67;
+            font-weight: 600;
+        }
+        :root[data-theme="twilight"] .hljs-type,
+        :root[data-theme="twilight"] .hljs-class .hljs-title {
+            color: #e5c07b;
+            font-weight: 600;
+        }
+        :root[data-theme="twilight"] .hljs-string,
+        :root[data-theme="twilight"] .hljs-addition {
+            color: #98c379;
+        }
+        :root[data-theme="twilight"] .hljs-number,
+        :root[data-theme="twilight"] .hljs-literal {
+            color: #d19a66;
+            font-weight: 600;
+        }
+        :root[data-theme="twilight"] .hljs-title,
+        :root[data-theme="twilight"] .hljs-function {
+            color: #61afef;
+            font-weight: 600;
+        }
+        :root[data-theme="twilight"] .hljs-built_in,
+        :root[data-theme="twilight"] .hljs-symbol {
+            color: #56b6c2;
+        }
+        :root[data-theme="twilight"] .hljs-meta {
+            color: #be5046;
+        }
+        :root[data-theme="twilight"] .hljs-variable,
+        :root[data-theme="twilight"] .hljs-template-variable {
+            color: #abb2bf;
         }
 
         blockquote {
@@ -347,23 +739,91 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="top-bar">
-            <div class="nav-links">
-                <a href="../index.html" class="nav-btn">目录总览</a>
-                <span style="color: var(--border-color)">|</span>
-                <span style="font-size: 0.88rem; color: var(--text-muted);">markdown/01_vllm_arch_and_sm70_hardware.md</span>
-            </div>
-            <button class="theme-switch-btn" onclick="toggleTheme()" id="themeBtn">
-                切换暮色
-            </button>
-        </div>
+    <!-- 移动端大纲浮动按钮与背景遮罩 -->
+    <button class="mobile-toc-toggle" onclick="toggleMobileToc()" id="mobileTocBtn" title="展开/收起目录大纲">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+        </svg>
+        <span>目录</span>
+    </button>
+    <div class="toc-backdrop" onclick="toggleMobileToc()"></div>
 
-        <article class="markdown-body">
-            <h1>01 - vLLM 架构全景与 Volta (SM70) 硬件底座</h1>
+    <div class="layout-wrapper">
+        <!-- 左侧大纲预览 -->
+        <aside class="sidebar-toc" id="sidebarToc">
+            <div class="toc-card">
+                <div class="toc-header">
+                    <div class="toc-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        <span>大纲预览</span>
+                    </div>
+                    <button class="toc-action-btn" onclick="toggleDesktopToc()" title="收起大纲">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                </div>
+                <nav class="toc-body">
+                    <ul class="toc-list">
+  <li class="toc-item toc-level-2"><a href="#导读与学习目标" class="toc-link" title="导读与学习目标">导读与学习目标</a></li>
+  <li class="toc-item toc-level-2"><a href="#一大模型推理的两大阶段与性能瓶颈" class="toc-link" title="一、大模型推理的两大阶段与性能瓶颈">一、大模型推理的两大阶段与性能瓶颈</a></li>
+  <li class="toc-item toc-level-3"><a href="#1-Prefill首字预填充--提示词阶段" class="toc-link" title="1. Prefill（首字预填充 / 提示词阶段）">1. Prefill（首字预填充 / 提示词阶段）</a></li>
+  <li class="toc-item toc-level-3"><a href="#2-Decode自回归解码--逐字生成阶段" class="toc-link" title="2. Decode（自回归解码 / 逐字生成阶段）">2. Decode（自回归解码 / 逐字生成阶段）</a></li>
+  <li class="toc-item toc-level-2"><a href="#二vLLM-系统骨架与数据流转" class="toc-link" title="二、vLLM 系统骨架与数据流转">二、vLLM 系统骨架与数据流转</a></li>
+  <li class="toc-item toc-level-3"><a href="#Paged-机制对底层-CUDA-寻址的影响" class="toc-link" title="Paged 机制对底层 CUDA 寻址的影响">Paged 机制对底层 CUDA 寻址的影响</a></li>
+  <li class="toc-item toc-level-4"><a href="#具体计算示例" class="toc-link" title="具体计算示例">具体计算示例</a></li>
+  <li class="toc-item toc-level-4"><a href="#真实-CUDA-算子中的代码对照" class="toc-link" title="真实 CUDA 算子中的代码对照">真实 CUDA 算子中的代码对照</a></li>
+  <li class="toc-item toc-level-2"><a href="#三Volta-架构SM70--Tesla-V100硬件特征" class="toc-link" title="三、Volta 架构（SM70 / Tesla V100）硬件特征">三、Volta 架构（SM70 / Tesla V100）硬件特征</a></li>
+  <li class="toc-item toc-level-3"><a href="#V100-算子开发的主要约束" class="toc-link" title="V100 算子开发的主要约束">V100 算子开发的主要约束</a></li>
+  <li class="toc-item toc-level-2"><a href="#四Attention-计算演进从朴素实现到-Online-Softmax" class="toc-link" title="四、Attention 计算演进：从朴素实现到 Online Softmax">四、Attention 计算演进：从朴素实现到 Online Softmax</a></li>
+  <li class="toc-item toc-level-3"><a href="#1-朴素实现的显存开销" class="toc-link" title="1. 朴素实现的显存开销">1. 朴素实现的显存开销</a></li>
+  <li class="toc-item toc-level-3"><a href="#2-FlashAttention-原理Online-Softmax" class="toc-link" title="2. FlashAttention 原理：Online Softmax">2. FlashAttention 原理：Online Softmax</a></li>
+  <li class="toc-item toc-level-4"><a href="#核心推导两块数据的-Softmax-增量拼接" class="toc-link" title="核心推导：两块数据的 Softmax 增量拼接">核心推导：两块数据的 Softmax 增量拼接</a></li>
+  <li class="toc-item toc-level-4"><a href="#递推结论与硬件状态演化" class="toc-link" title="递推结论与硬件状态演化">递推结论与硬件状态演化</a></li>
+  <li class="toc-item toc-level-2"><a href="#五1Cat-vLLM-在-V100-上的优化方向PR-286" class="toc-link" title="五、1Cat-vLLM 在 V100 上的优化方向（PR 286）">五、1Cat-vLLM 在 V100 上的优化方向（PR #286）</a></li>
+  <li class="toc-item toc-level-2"><a href="#研讨记录与思考题" class="toc-link" title="研讨记录与思考题">研讨记录与思考题</a></li>
+</ul>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <div class="container">
+                <div class="top-bar">
+                    <div class="nav-links">
+                        <button class="nav-btn" id="expandTocBtn" onclick="toggleDesktopToc()" style="display: none;" title="展开大纲侧边栏">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                            <span>显示大纲</span>
+                        </button>
+                        <a href="../index.html" class="nav-btn">目录总览</a>
+                        <span style="color: var(--border-color)">|</span>
+                        <span style="font-size: 0.88rem; color: var(--text-muted);">markdown/01_vllm_arch_and_sm70_hardware.md</span>
+                    </div>
+                    <button class="theme-switch-btn" onclick="toggleTheme()" id="themeBtn">
+                        切换暮色
+                    </button>
+                </div>
+
+                <article class="markdown-body">
+                    <h1 id="01---vLLM-架构全景与-Volta-SM70-硬件底座">01 - vLLM 架构全景与 Volta (SM70) 硬件底座</h1>
 <blockquote><strong>模块标签</strong>：<code>1Cat-vLLM 源码精读</code> · <code>第 01 讲</code> · <code>CUDA 体系结构</code> · <code>SM70 Volta</code></blockquote>
 <hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
-<h2>导读与学习目标</h2>
+<h2 id="导读与学习目标">导读与学习目标</h2>
 <p>本讲作为全系列的基础篇，旨在建立从大模型高层系统调度（vLLM）到底层 GPU 物理硬件（Tesla V100 / SM70）的完整链路认知：</p>
 <ol>
   <li><strong>计算与访存边界</strong>：厘清大模型推理两阶段的硬件瓶颈差异（Prefill 算力受限 vs Decode 访存受限）。</li>
@@ -372,16 +832,16 @@
   <li><strong>数学基础</strong>：掌握 FlashAttention 原理与 Online Softmax 的分块递推公式。</li>
 </ol>
 <hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
-<h2>一、大模型推理的两大阶段与性能瓶颈</h2>
+<h2 id="一大模型推理的两大阶段与性能瓶颈">一、大模型推理的两大阶段与性能瓶颈</h2>
 <p>在编写任何 GPU 算子前，需要区分大模型运行的两个阶段：</p>
-<h3>1. Prefill（首字预填充 / 提示词阶段）</h3>
+<h3 id="1-Prefill首字预填充--提示词阶段">1. Prefill（首字预填充 / 提示词阶段）</h3>
 <ul>
   <li><strong>计算特征</strong>：输入整个 Prompt（例如 2048 个 token），所有 Token 并行计算 Q, K, V。</li>
   <li><strong>瓶颈类型</strong>：<strong>Compute-Bound（算力受限）</strong>。</li>
 </ul>
 <p>  - GEMM 矩阵尺寸大（如 $M=2048, K=4096, N=4096$）；</p>
 <p>  - 能够打满 GPU 的 Tensor Core 计算单元。</p>
-<h3>2. Decode（自回归解码 / 逐字生成阶段）</h3>
+<h3 id="2-Decode自回归解码--逐字生成阶段">2. Decode（自回归解码 / 逐字生成阶段）</h3>
 <ul>
   <li><strong>计算特征</strong>：每次根据上一个 token 生成下一个 token（即 $M=1$）。为了计算当前单个 Token 与历史所有上下文的注意力关联，必须从显存中完整读取历史所有已生成 Token 的 Key 和 Value（<strong>KV Cache</strong>）。</li>
   <li><strong>瓶颈类型</strong>：<strong>Memory-Bound（访存带宽受限）</strong>。</li>
@@ -399,9 +859,20 @@
 <p></p>
 </div>
 <hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
-<h2>二、vLLM 系统骨架与数据流转</h2>
+<h2 id="二vLLM-系统骨架与数据流转">二、vLLM 系统骨架与数据流转</h2>
 <p>vLLM 核心解决了显存碎片化问题，并引入了 Iteration 级别的调度流水线：</p>
-<pre><code class="language-text">1. 调度层 (Scheduler &amp; Continuous Batching)
+<div class="code-block">
+  <div class="code-header">
+    <span class="code-lang">TEXT</span>
+    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>复制</span>
+    </button>
+  </div>
+  <pre><code class="language-text">1. 调度层 (Scheduler &amp; Continuous Batching)
    └─ 每个 Iteration 动态调度新请求加入与完成请求释放。
        ↓
 2. 显存管理层 (BlockManager &amp; PagedAttention)
@@ -415,11 +886,24 @@
        ↓
 5. 架构特化算子层 (Flash-V100 / SM70-TurboMind)
    └─ 执行 Volta 定制的 Wide QK/PV 打包、W4A16 软解算子。</code></pre>
-<h3>Paged 机制对底层 CUDA 寻址的影响</h3>
+</div>
+<h3 id="Paged-机制对底层-CUDA-寻址的影响">Paged 机制对底层 CUDA 寻址的影响</h3>
 <p>连续显存矩阵乘法的地址计算是线性的：</p>
-<pre><code class="language-text">Address = Base + token_idx * Stride</code></pre>
+<div class="code-block">
+  <div class="code-header">
+    <span class="code-lang">TEXT</span>
+    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>复制</span>
+    </button>
+  </div>
+  <pre><code class="language-text">Address = Base + token_idx * Stride</code></pre>
+</div>
 <p>而在 PagedAttention 中，读写 KV Cache 变成了<strong>二级跳表寻址</strong>（整数除法算块号，取模算余数）。</p>
-<h4>具体计算示例</h4>
+<h4 id="具体计算示例">具体计算示例</h4>
 <p>假设每个物理块固定存放 16 个 Token（<code>BLOCK_SIZE = 16</code>）：</p>
 <ul>
   <li>当前正在处理第 35 个 Token（下标从 0 起，<code>token_idx = 35</code>）；</li>
@@ -432,10 +916,33 @@
   <li><strong>计算块内偏移（取模）</strong>：<code>35 % 16 = 3</code>，说明在该物理块内部位于第 3 个槽位；</li>
   <li><strong>最终显存物理地址</strong>：</li>
 </ol>
-<pre><code class="language-text">   物理地址 = 显存池基址 + (3 * 物理块字节大小) + (3 * 单个Token的KV字节大小)</code></pre>
-<h4>真实 CUDA 算子中的代码对照</h4>
+<div class="code-block">
+  <div class="code-header">
+    <span class="code-lang">TEXT</span>
+    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>复制</span>
+    </button>
+  </div>
+  <pre><code class="language-text">   物理地址 = 显存池基址 + (3 * 物理块字节大小) + (3 * 单个Token的KV字节大小)</code></pre>
+</div>
+<h4 id="真实-CUDA-算子中的代码对照">真实 CUDA 算子中的代码对照</h4>
 <p>对应于项目源码 <code>csrc/attention/sm70_v37/tail.cu</code>：</p>
-<pre><code class="language-cuda">// 1. 整数除法得到逻辑页号，直接查表获取物理页号
+<div class="code-block">
+  <div class="code-header">
+    <span class="code-lang">CUDA</span>
+    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>复制</span>
+    </button>
+  </div>
+  <pre><code class="language-cuda">// 1. 整数除法得到逻辑页号，直接查表获取物理页号
 const int physical_page = block_table[token_idx / page_size];
 
 // 2. 取模得到物理页内的具体行/槽位
@@ -443,6 +950,7 @@ const int page_offset   = token_idx % page_size;
 
 // 3. 计算实际显存读取指针
 const half* k_ptr = kv_cache + physical_page * page_stride + page_offset * head_dim;</code></pre>
+</div>
 <div class="callout callout-warning">
   <div class="callout-title">核心挑战与限制</div>
 <p>访存合并要求</p>
@@ -450,7 +958,7 @@ const half* k_ptr = kv_cache + physical_page * page_stride + page_offset * head_
 <p></p>
 </div>
 <hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
-<h2>三、Volta 架构（SM70 / Tesla V100）硬件特征</h2>
+<h2 id="三Volta-架构SM70--Tesla-V100硬件特征">三、Volta 架构（SM70 / Tesla V100）硬件特征</h2>
 <table>
   <tr><th>架构特性</th><th>Tesla V100 (Volta / SM70)</th><th>A100 (Ampere / SM80)</th><th>H100 (Hopper / SM90)</th></tr>
   <tr><td><strong>Tensor Core 指令</strong></td><td><code>mma.sync.m8n8k4</code> (小粒度 HMMA)</td><td><code>mma.sync.m16n8k16</code> (吞吐翻倍)</td><td>WGMMA / TMA 硬件单元支持</td></tr>
@@ -458,7 +966,7 @@ const half* k_ptr = kv_cache + physical_page * page_stride + page_offset * head_
   <tr><td><strong>显存到共享内存</strong></td><td><strong>必须经过通用寄存器中转</strong> (消耗寄存器)</td><td><code>cp.async</code> 硬件异步直拷</td><td>TMA (Tensor Memory Accelerator)</td></tr>
   <tr><td><strong>Shared Memory 容量</strong></td><td>L1 与 Shared Memory 共享 128KB</td><td>最高 164 KB，硬件异步屏障</td><td>最高 228 KB，集群间共享 (DSM)</td></tr>
 </table>
-<h3>V100 算子开发的主要约束</h3>
+<h3 id="V100-算子开发的主要约束">V100 算子开发的主要约束</h3>
 <ol>
   <li><strong>寄存器溢出（Register Spilling）</strong>：</li>
 </ol>
@@ -472,57 +980,131 @@ const half* k_ptr = kv_cache + physical_page * page_stride + page_offset * head_
 </ol>
 <p>   在 V100 上运行量化模型（如 NVFP4 / W4A16 / FP8）时，无法直接调用专用硬件指令。必须在 CUDA 软件层面通过<strong>位运算在寄存器内解包为 FP16</strong>，再交由 HMMA 执行。</p>
 <hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
-<h2>四、Attention 计算演进：从朴素实现到 Online Softmax</h2>
+<h2 id="四Attention-计算演进从朴素实现到-Online-Softmax">四、Attention 计算演进：从朴素实现到 Online Softmax</h2>
 <p>标准 Attention 公式：</p>
 <div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\text{Attention}(Q, K, V) = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right) V$$</div>
-<h3>1. 朴素实现的显存开销</h3>
+<h3 id="1-朴素实现的显存开销">1. 朴素实现的显存开销</h3>
 <p>若依次执行 $S = QK^T \to P = \text{Softmax}(S) \to O = PV$：</p>
 <ul>
   <li>中间矩阵 $S \in \mathbb{R}^{N \times N}$ 和 $P \in \mathbb{R}^{N \times N}$ 必须完整写回显存再读出；</li>
   <li>显存占用与显存带宽往返都是 $O(N^2)$。在长上下文下容易导致显存溢出。</li>
 </ul>
-<h3>2. FlashAttention 原理：Online Softmax</h3>
-<p>FlashAttention 将 $Q, K, V$ 分块载入片上 <strong>Shared Memory</strong>，避免向全局显存写出中间矩阵。</p>
-<p>核心计算基于 <strong>Online Softmax</strong>：在仅加载局部 $K$ 向量时，增量维护全局 Softmax 归一化。</p>
-<div class="callout callout-important">
-  <div class="callout-title">核心公式与结论</div>
-<p>Online Softmax 递推公式</p>
-<p>设前一段的局部最大值为 $m^{(1)}$，指数和为 $l^{(1)}$，部分输出为 $O^{(1)}$；</p>
-<p>新输入块的局部最大值为 $m^{(2)}$，局部指数和为 $l^{(2)}$：</p>
-<p>1. <strong>更新全局最大值</strong>：</p>
-<div style="text-align:center; margin: 12px 0;">$$m^{\text{new}} = \max\left(m^{(1)}, m^{(2)}\right)$$</div>
-<p>2. <strong>更新归一化分母（指数和）</strong>：</p>
-<div style="text-align:center; margin: 12px 0;">$$l^{\text{new}} = e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)} + e^{m^{(2)} - m^{\text{new}}} \cdot l^{(2)}$$</div>
-<p>3. <strong>输出向量增量修正</strong>：</p>
-<div style="text-align:center; margin: 12px 0;">$$O^{\text{new}} = \frac{e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)} \cdot O^{(1)} + e^{m^{(2)} - m^{\text{new}}} \cdot \left(P^{(2)} V^{(2)} \right)}{l^{\text{new}}}$$</div>
-<p></p>
-</div>
-<p>通过在片上寄存器中滚动累加并动态缩放，显存访问复杂度降低至 $O(N)$。</p>
+<h3 id="2-FlashAttention-原理Online-Softmax">2. FlashAttention 原理：Online Softmax</h3>
+<p>标准 Attention 公式：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$O = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right) V = P V$$</div>
+<p>为了防止指数爆炸（数值溢出），工程中必须使用 <strong>Safe Softmax</strong>。若序列长度为 $N$，传统 Safe Softmax 计算向量 $x \in \mathbb{R}^N$ 需顺序完成三遍遍历：</p>
+<ol>
+  <li><strong>第 1 遍</strong>：求全局最大值 $m = \max_{1 \le i \le N} x_i$；</li>
+  <li><strong>第 2 遍</strong>：求减去最大值后的指数和分母 $l = \sum_{i=1}^N e^{x_i - m}$；</li>
+  <li><strong>第 3 遍</strong>：计算每个元素的概率 $P_i = \frac{e^{x_i - m}}{l}$ 并与 $V$ 做加权求和。</li>
+</ol>
+<p><strong>痛点</strong>：传统方法必须等<strong>全部 $N$ 个元素都看完</strong>后才能得到全局 $m$，这意味着不能边加载局部 $K, V$ 边计算最终结果，不得不将 $N \times N$ 的中间矩阵 $S$ 和 $P$ 频繁往返写入全局显存。</p>
 <hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
-<h2>五、1Cat-vLLM 在 V100 上的优化方向（PR #286）</h2>
+<h4 id="核心推导两块数据的-Softmax-增量拼接">核心推导：两块数据的 Softmax 增量拼接</h4>
+<p>设整个序列被切分为两个数据块（Block 1 与 Block 2）：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$x = \left[ x^{(1)}, x^{(2)} \right], \quad x^{(1)} \in \mathbb{R}^{B_1}, \; x^{(2)} \in \mathbb{R}^{B_2}$$</div>
+<h5 id="步骤-1局部统计量定义">步骤 1：局部统计量定义</h5>
+<p>假设我们刚刚只加载了 Block 1，算出了局部最大值与局部指数和：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$m^{(1)} = \max_{i \in B_1} x_i^{(1)}, \quad l^{(1)} = \sum_{i \in B_1} e^{x_i^{(1)} - m^{(1)}}$$</div>
+<p>此时仅用 Block 1 计算的局部输出向量 $O^{(1)}$ 为：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$O^{(1)} = \sum_{i \in B_1} P_i^{(1)} V_i^{(1)} = \frac{\sum_{i \in B_1} e^{x_i^{(1)} - m^{(1)}} V_i^{(1)}}{l^{(1)}}$$</div>
+<p>为了便于后续分子合并，定义局部未归一化加权和分子为 $\tilde{O}^{(1)}$：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\tilde{O}^{(1)} = \sum_{i \in B_1} e^{x_i^{(1)} - m^{(1)}} V_i^{(1)} = l^{(1)} \cdot O^{(1)}$$</div>
+<p>同理，当新加载 Block 2 时，它的局部统计量为：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$m^{(2)} = \max_{j \in B_2} x_j^{(2)}, \quad l^{(2)} = \sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}}, \quad \tilde{O}^{(2)} = \sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}} V_j^{(2)} = l^{(2)} \cdot O^{(2)}$$</div>
+<h5 id="步骤-2全局最大值更新">步骤 2：全局最大值更新</h5>
+<p>两块合并后的全局最大值显然为两者较大者：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$m^{\text{new}} = \max\left(m^{(1)}, m^{(2)}\right)$$</div>
+<h5 id="步骤-3归一化分母指数和的增量修正">步骤 3：归一化分母（指数和）的增量修正</h5>
+<p>全局正确的归一化分母定义为以 $m^{\text{new}}$ 为基准的全部元素指数和：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$l^{\text{new}} = \sum_{k \in B_1 \cup B_2} e^{x_k - m^{\text{new}}} = \sum_{i \in B_1} e^{x_i^{(1)} - m^{\text{new}}} + \sum_{j \in B_2} e^{x_j^{(2)} - m^{\text{new}}}$$</div>
+<p>利用指数恒等式 $e^{a - c} = e^{a - b} \cdot e^{b - c}$，将指数项拆分：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\sum_{i \in B_1} e^{x_i^{(1)} - m^{\text{new}}} = \sum_{i \in B_1} \left( e^{x_i^{(1)} - m^{(1)}} \cdot e^{m^{(1)} - m^{\text{new}}} \right) = e^{m^{(1)} - m^{\text{new}}} \cdot \underbrace{\sum_{i \in B_1} e^{x_i^{(1)} - m^{(1)}}}_{l^{(1)}}$$</div>
+<p>同理对 Block 2 处理：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\sum_{j \in B_2} e^{x_j^{(2)} - m^{\text{new}}} = e^{m^{(2)} - m^{\text{new}}} \cdot \underbrace{\sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}}}_{l^{(2)}}$$</div>
+<p>代回即可得到<strong>分母递推公式</strong>：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$l^{\text{new}} = e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)} + e^{m^{(2)} - m^{\text{new}}} \cdot l^{(2)}$$</div>
+<blockquote><strong>数值稳定性注意</strong>：由于 $m^{\text{new}} \ge m^{(1)}$ 且 $m^{\text{new}} \ge m^{(2)}$，缩放指数差值 $m^{(1)} - m^{\text{new}} \le 0$ 以及 $m^{(2)} - m^{\text{new}} \le 0$，因此系数 $e^{\Delta m} \in (0, 1]$，计算时<strong>绝对不会发生上溢</strong>。</blockquote>
+<h5 id="步骤-4注意力输出向量-O-的在线递推">步骤 4：注意力输出向量 $O$ 的在线递推</h5>
+<p>最终全局加权输出定义为：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$O^{\text{new}} = \frac{\sum_{k \in B_1 \cup B_2} e^{x_k - m^{\text{new}}} V_k}{l^{\text{new}}}$$</div>
+<p>展开分子（未归一化总分子 $\tilde{O}^{\text{new}}$）：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\tilde{O}^{\text{new}} = \sum_{i \in B_1} e^{x_i^{(1)} - m^{\text{new}}} V_i^{(1)} + \sum_{j \in B_2} e^{x_j^{(2)} - m^{\text{new}}} V_j^{(2)}$$</div>
+<p>同样提取缩放系数：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\sum_{i \in B_1} e^{x_i^{(1)} - m^{\text{new}}} V_i^{(1)} = e^{m^{(1)} - m^{\text{new}}} \sum_{i \in B_1} e^{x_i^{(1)} - m^{(1)}} V_i^{(1)} = e^{m^{(1)} - m^{\text{new}}} \cdot \tilde{O}^{(1)} = e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)} \cdot O^{(1)}$$</div>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\sum_{j \in B_2} e^{x_j^{(2)} - m^{\text{new}}} V_j^{(2)} = e^{m^{(2)} - m^{\text{new}}} \sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}} V_j^{(2)} = e^{m^{(2)} - m^{\text{new}}} \cdot \left( P^{(2)} V^{(2)} \right) \cdot l^{(2)}$$</div>
+<p>将分子代入归一化分母 $l^{\text{new}}$，得出<strong>最终输出增量递推公式</strong>：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$O^{\text{new}} = \frac{e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)} \cdot O^{(1)} + e^{m^{(2)} - m^{\text{new}}} \cdot \left( P^{(2)} V^{(2)} \right) \cdot l^{(2)}}{l^{\text{new}}}$$</div>
+<p>若记局部块的加权得分 $P^{(2)} = \frac{e^{x^{(2)} - m^{(2)}}}{l^{(2)}}$，则 $P^{(2)} V^{(2)} \cdot l^{(2)} = \sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}} V_j^{(2)}$，公式亦可紧凑写为：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$O^{\text{new}} = \frac{e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)} \cdot O^{(1)} + e^{m^{(2)} - m^{\text{new}}} \cdot \sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}} V_j^{(2)}}{l^{\text{new}}}$$</div>
+<p>或者更直观地写成“<strong>旧结果衰减更新 + 新结果加权补入</strong>”的凸组合形式：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$O^{\text{new}} = \left( \frac{l^{(1)} \cdot e^{m^{(1)} - m^{\text{new}}}}{l^{\text{new}}} \right) \cdot O^{(1)} + \left( \frac{l^{(2)} \cdot e^{m^{(2)} - m^{\text{new}}}}{l^{\text{new}}} \right) \cdot O^{(2)}$$</div>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h4 id="递推结论与硬件状态演化">递推结论与硬件状态演化</h4>
+<p>在 CUDA Kernel 运行期间，每个线程/Warp 无需任何全局中间显存缓冲区，仅在<strong>片上寄存器</strong>中维持三个常数级状态变量：</p>
+<ul>
+  <li>标量 $m \in \mathbb{R}$（当前累积最大值，初值设为 $-\infty$）；</li>
+  <li>标量 $l \in \mathbb{R}$（当前累积指数和分母，初值设为 $0$）；</li>
+  <li>向量 $O \in \mathbb{R}^d$（当前累积加权结果向量，初值设为 $\vec{0}$）。</li>
+</ul>
+<div class="code-block">
+  <div class="code-header">
+    <span class="code-lang">TEXT</span>
+    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>复制</span>
+    </button>
+  </div>
+  <pre><code class="language-text">片上通用寄存器 (维持当前状态):
+   ┌─────────┐   ┌─────────┐   ┌─────────────────┐
+   │  m = -∞ │   │  l = 0  │   │     O = 0       │
+   └─────────┘   └─────────┘   └─────────────────┘
+        │             │                 │
+        ▼ 循环依次载入下一个 Physical Block 的 K, V
+   ┌─────────────────────────────────────────────┐
+   │ 1. GEMM-1:  S_tile = Q * K_tile^T           │
+   │ 2. Max/Sum: 计算该 Tile 的局部 m_tile, l_tile│
+   │ 3. Rescale: 按上述公式就地更新 m, l, O 寄存器 │
+   │ 4. GEMM-2:  O += P_tile * V_tile 累加       │
+   └─────────────────────────────────────────────┘
+        │
+   循环结束 ──&gt; 寄存器中的 O 即为严格等于标准 Softmax 的最终数学结果！</code></pre>
+</div>
+<h5 id="核心工程收益">核心工程收益</h5>
+<ol>
+  <li><strong>显存访问复杂度降低</strong>：中间 $N \times N$ 的打分矩阵 $S$ 和概率矩阵 $P$ 彻底无需写入全局显存，显存访存复杂度从 $O(N^2)$ 降低到 $O(N)$；</li>
+  <li><strong>算子融合（Fused Kernel）</strong>：GEMM-1 ($QK^T$)、Softmax 和 GEMM-2 ($PV$) 在单次 Kernel 执行内流水线完成。</li>
+</ol>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h2 id="五1Cat-vLLM-在-V100-上的优化方向PR-286">五、1Cat-vLLM 在 V100 上的优化方向（PR #286）</h2>
 <p>针对早期实现在 V100 上吞吐偏低的问题（约 17.92 TFLOP/s），1Cat-vLLM 在 <strong>PR #286</strong> 中引入了两项核心改进：</p>
 <ul>
   <li><strong>Split-D</strong>：将较大的 Head Dimension 切分成适合 Volta 共享内存与寄存器容量的小 Tile；</li>
   <li><strong>GQA-packed Wide QK/PV GEMM</strong>：将 6 个共享同一组 KV 的 Query Heads 打包成一个更宽的 GEMM，降低指令发射开销并提高 Tensor Core 计算密度，将实测吞吐提升至 <strong>≈60.8 TFLOP/s</strong>。</li>
 </ul>
 <hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
-<h2>研讨记录与思考题</h2>
+<h2 id="研讨记录与思考题">研讨记录与思考题</h2>
 <ul>
   <li><input type="checkbox" disabled style="margin-right: 6px;"> <strong>思考题 1</strong>：在 GQA 中，多个 Q Head 共享同一个 KV Head。如果每个 Q 分别启动一个 Kernel，会产生哪些重复访存？</li>
   <li><input type="checkbox" disabled style="margin-right: 6px;"> <strong>思考题 2</strong>：在计算 $QK^T$ 时，$K$ 原本按行存储，转置后按列读取。Shared Memory 的 32 个 Bank 会产生何种冲突？工业界通常采用什么排布方式（Padding 或 Swizzle）解决？</li>
 </ul>
 <hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
 <p><em>源文件位于 <code>learn_notes/markdown/01_vllm_arch_and_sm70_hardware.md</code></em></p>
-        </article>
+                </article>
 
-        <div class="source-meta">
-            <span>Markdown 源文件：<code>markdown/01_vllm_arch_and_sm70_hardware.md</code></span>
-            <span>修改 Markdown 后运行 <code>build_notes.bat</code> 即可同步更新</span>
-        </div>
+                <div class="source-meta">
+                    <span>Markdown 源文件：<code>markdown/01_vllm_arch_and_sm70_hardware.md</code></span>
+                    <span>修改 Markdown 后运行 <code>build_notes.bat</code> 即可同步更新</span>
+                </div>
 
-        <footer>
-            <p>1Cat-vLLM 源码精读与算子开发指南 · <a href="../index.html" style="color: inherit;">返回笔记首页</a></p>
-        </footer>
+                <footer>
+                    <p>1Cat-vLLM 源码精读与算子开发指南 · <a href="../index.html" style="color: inherit;">返回笔记首页</a></p>
+                </footer>
+            </div>
+        </main>
     </div>
 
     <script>
@@ -541,6 +1123,110 @@ const half* k_ptr = kv_cache + physical_page * page_stride + page_offset * head_
             }
         }
 
+        // 侧边栏收起/展开
+        function toggleDesktopToc() {
+            const isCollapsed = document.body.classList.toggle('toc-collapsed');
+            localStorage.setItem('toc-collapsed', isCollapsed ? 'true' : 'false');
+        }
+
+        // 移动端侧边栏切换
+        function toggleMobileToc() {
+            const sidebar = document.getElementById('sidebarToc');
+            const isOpen = sidebar.classList.toggle('open');
+            document.body.classList.toggle('toc-drawer-open', isOpen);
+        }
+
+        // 点击大纲链接时（在窄屏/抽屉模式下）自动收起抽屉
+        document.addEventListener('click', function(e) {
+            const link = e.target.closest('.toc-link');
+            if (link && window.innerWidth <= 1120) {
+                const sidebar = document.getElementById('sidebarToc');
+                if (sidebar) sidebar.classList.remove('open');
+                document.body.classList.remove('toc-drawer-open');
+            }
+        });
+
+        // 滚动监听与大纲高亮 (Scroll-Spy)
+        function initScrollSpy() {
+            const links = Array.from(document.querySelectorAll('.toc-link'));
+            if (!links.length) return;
+
+            const targets = links.map(link => {
+                const href = link.getAttribute('href');
+                if (!href || !href.startsWith('#')) return null;
+                const id = decodeURIComponent(href.slice(1));
+                return {
+                    link: link,
+                    element: document.getElementById(id)
+                };
+            }).filter(item => item && item.element !== null);
+
+            if (!targets.length) return;
+
+            function onScroll() {
+                const scrollPos = window.scrollY + 100;
+                let currentItem = targets[0];
+                for (let i = 0; i < targets.length; i++) {
+                    if (targets[i].element.offsetTop <= scrollPos) {
+                        currentItem = targets[i];
+                    } else {
+                        break;
+                    }
+                }
+                targets.forEach(item => {
+                    if (item === currentItem) {
+                        if (!item.link.classList.contains('active')) {
+                            item.link.classList.add('active');
+                            item.link.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                        }
+                    } else {
+                        item.link.classList.remove('active');
+                    }
+                });
+            }
+
+            window.addEventListener('scroll', onScroll, { passive: true });
+            onScroll();
+        }
+
+        // 代码一键复制
+        function copyCode(btn) {
+            const block = btn.closest('.code-block');
+            const code = block ? block.querySelector('pre code') : null;
+            if (!code) return;
+            const text = code.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const origHtml = btn.innerHTML;
+                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> <span>已复制!</span>';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.innerHTML = origHtml;
+                    btn.classList.remove('copied');
+                }, 2000);
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                btn.innerHTML = '<span>已复制!</span>';
+                setTimeout(() => { btn.innerHTML = '<span>复制</span>'; }, 2000);
+            });
+        }
+
+        // 初始化代码语法高亮
+        function initHighlight() {
+            if (window.hljs) {
+                try {
+                    hljs.registerAliases(['cuda', 'cu', 'cuh'], { languageName: 'cpp' });
+                } catch(e) {}
+                document.querySelectorAll('pre code').forEach((el) => {
+                    hljs.highlightElement(el);
+                });
+            }
+        }
+
         (function() {
             const saved = localStorage.getItem('doc-theme');
             if (saved) {
@@ -550,6 +1236,14 @@ const half* k_ptr = kv_cache + physical_page * page_stride + page_offset * head_
                     btn.innerHTML = saved === 'twilight' ? '切换米纸' : '切换暮色';
                 }
             }
+
+            const collapsed = localStorage.getItem('toc-collapsed');
+            if (collapsed === 'true') {
+                document.body.classList.add('toc-collapsed');
+            }
+
+            initScrollSpy();
+            initHighlight();
         })();
     </script>
 </body>

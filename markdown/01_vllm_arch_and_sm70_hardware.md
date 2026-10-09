@@ -193,19 +193,22 @@ $$O^{\text{new}} = \frac{\sum_{k \in B_1 \cup B_2} e^{x_k - m^{\text{new}}} V_k}
 展开分子（未归一化总分子 $\tilde{O}^{\text{new}}$）：
 $$\tilde{O}^{\text{new}} = \sum_{i \in B_1} e^{x_i^{(1)} - m^{\text{new}}} V_i^{(1)} + \sum_{j \in B_2} e^{x_j^{(2)} - m^{\text{new}}} V_j^{(2)}$$
 
-同样提取缩放系数：
-$$\sum_{i \in B_1} e^{x_i^{(1)} - m^{\text{new}}} V_i^{(1)} = e^{m^{(1)} - m^{\text{new}}} \sum_{i \in B_1} e^{x_i^{(1)} - m^{(1)}} V_i^{(1)} = e^{m^{(1)} - m^{\text{new}}} \cdot \tilde{O}^{(1)} = e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)} \cdot O^{(1)}$$
+两块提取缩放系数的过程在数学上是**完全对称**的：
+* **Block 1 分子缩放**：
+  $$\sum_{i \in B_1} e^{x_i^{(1)} - m^{\text{new}}} V_i^{(1)} = e^{m^{(1)} - m^{\text{new}}} \sum_{i \in B_1} e^{x_i^{(1)} - m^{(1)}} V_i^{(1)} = e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)} \cdot O^{(1)}$$
+* **Block 2 分子缩放**：
+  $$\sum_{j \in B_2} e^{x_j^{(2)} - m^{\text{new}}} V_j^{(2)} = e^{m^{(2)} - m^{\text{new}}} \sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}} V_j^{(2)} = e^{m^{(2)} - m^{\text{new}}} \cdot l^{(2)} \cdot O^{(2)}$$
 
-$$\sum_{j \in B_2} e^{x_j^{(2)} - m^{\text{new}}} V_j^{(2)} = e^{m^{(2)} - m^{\text{new}}} \sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}} V_j^{(2)} = e^{m^{(2)} - m^{\text{new}}} \cdot \left( P^{(2)} V^{(2)} \right) \cdot l^{(2)}$$
+将分子代入归一化分母 $l^{\text{new}}$，得出**完全对称的输出增量递推公式**：
+$$O^{\text{new}} = \frac{e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)} \cdot O^{(1)} \;+\; e^{m^{(2)} - m^{\text{new}}} \cdot l^{(2)} \cdot O^{(2)}}{l^{\text{new}}}$$
 
-将分子代入归一化分母 $l^{\text{new}}$，得出**最终输出增量递推公式**：
-$$O^{\text{new}} = \frac{e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)} \cdot O^{(1)} + e^{m^{(2)} - m^{\text{new}}} \cdot \left( P^{(2)} V^{(2)} \right) \cdot l^{(2)}}{l^{\text{new}}}$$
+亦可直观写为“**旧结果衰减更新 + 新结果加权补入**”的凸组合形式：
+$$O^{\text{new}} = \left( \frac{l^{(1)} \cdot e^{m^{(1)} - m^{\text{new}}}}{l^{\text{new}}} \right) \cdot O^{(1)} \;+\; \left( \frac{l^{(2)} \cdot e^{m^{(2)} - m^{\text{new}}}}{l^{\text{new}}} \right) \cdot O^{(2)}$$
 
-若记局部块的加权得分 $P^{(2)} = \frac{e^{x^{(2)} - m^{(2)}}}{l^{(2)}}$，则 $P^{(2)} V^{(2)} \cdot l^{(2)} = \sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}} V_j^{(2)}$，公式亦可紧凑写为：
-$$O^{\text{new}} = \frac{e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)} \cdot O^{(1)} + e^{m^{(2)} - m^{\text{new}}} \cdot \sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}} V_j^{(2)}}{l^{\text{new}}}$$
-
-或者更直观地写成“**旧结果衰减更新 + 新结果加权补入**”的凸组合形式：
-$$O^{\text{new}} = \left( \frac{l^{(1)} \cdot e^{m^{(1)} - m^{\text{new}}}}{l^{\text{new}}} \right) \cdot O^{(1)} + \left( \frac{l^{(2)} \cdot e^{m^{(2)} - m^{\text{new}}}}{l^{\text{new}}} \right) \cdot O^{(2)}$$
+> [!NOTE] 工程实现视角的微小差异说明
+> 在纯数学上两块完全对称，但在 CUDA Kernel 执行时两块的状态不同：
+> 1. **旧块 Block 1（过去时）**：原始 Token 已从片上释放，寄存器中只留存有标量 $l^{(1)}$ 和向量 $O^{(1)}$，因此必须通过乘法 $e^{\Delta m} \cdot l^{(1)} \cdot O^{(1)}$ 来还原分子并缩放；
+> 2. **新块 Block 2（现在时）**：当前物理块正在片上，程序可直接用 Tensor Core 执行局部未归一化矩阵乘 $\tilde{P}^{(2)} V^{(2)}$（其中 $\tilde{P}^{(2)} = \exp(Q K^{(2)T} - m^{(2)})$），无需先除以 $l^{(2)}$ 计算 $O^{(2)}$ 再乘以 $l^{(2)}$，从而在硬件层省去一次全量除法。两者在数学上是严格恒等的。
 
 ---
 

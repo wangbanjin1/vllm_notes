@@ -260,7 +260,7 @@ def md_to_html(md_text: str) -> tuple[str, str, str]:
             continue
 
         # 8. 列表项 (- 或 1.)
-        list_match = re.match(r'^(\*|-|\d+\.)\s+(.*)', line)
+        list_match = re.match(r'^\s*(\*|-|\d+\.)\s+(.*)', line)
         if list_match:
             marker, text = list_match.groups()
             curr_type = "ol" if marker[0].isdigit() else "ul"

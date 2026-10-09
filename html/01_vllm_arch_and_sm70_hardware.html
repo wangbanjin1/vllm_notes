@@ -14,10 +14,13 @@
             },
             options: {
                 skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            },
+            chtml: {
+                matchFontHeight: false
             }
         };
     </script>
-    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" onerror="this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js';"></script>
     <!-- Highlight.js for code syntax highlighting -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <style>
@@ -791,6 +794,7 @@
   <li class="toc-item toc-level-3"><a href="#1-朴素实现的显存开销" class="toc-link" title="1. 朴素实现的显存开销">1. 朴素实现的显存开销</a></li>
   <li class="toc-item toc-level-3"><a href="#2-FlashAttention-原理Online-Softmax" class="toc-link" title="2. FlashAttention 原理：Online Softmax">2. FlashAttention 原理：Online Softmax</a></li>
   <li class="toc-item toc-level-4"><a href="#核心推导两块数据的-Softmax-增量拼接" class="toc-link" title="核心推导：两块数据的 Softmax 增量拼接">核心推导：两块数据的 Softmax 增量拼接</a></li>
+  <li class="toc-item toc-level-4"><a href="#深入剖析为什么工程上可以省去除法数学约分与硬件考量" class="toc-link" title="深入剖析：为什么工程上可以省去除法？（数学约分与硬件考量）">深入剖析：为什么工程上可以省去除法？（数学约分与硬件考量）</a></li>
   <li class="toc-item toc-level-4"><a href="#递推结论与硬件状态演化" class="toc-link" title="递推结论与硬件状态演化">递推结论与硬件状态演化</a></li>
   <li class="toc-item toc-level-2"><a href="#五1Cat-vLLM-在-V100-上的优化方向PR-286" class="toc-link" title="五、1Cat-vLLM 在 V100 上的优化方向（PR 286）">五、1Cat-vLLM 在 V100 上的优化方向（PR #286）</a></li>
   <li class="toc-item toc-level-2"><a href="#研讨记录与思考题" class="toc-link" title="研讨记录与思考题">研讨记录与思考题</a></li>
@@ -838,15 +842,15 @@
 <ul>
   <li><strong>计算特征</strong>：输入整个 Prompt（例如 2048 个 token），所有 Token 并行计算 Q, K, V。</li>
   <li><strong>瓶颈类型</strong>：<strong>Compute-Bound（算力受限）</strong>。</li>
+  <li>GEMM 矩阵尺寸大（如 $M=2048, K=4096, N=4096$）；</li>
+  <li>能够打满 GPU 的 Tensor Core 计算单元。</li>
 </ul>
-<p>  - GEMM 矩阵尺寸大（如 $M=2048, K=4096, N=4096$）；</p>
-<p>  - 能够打满 GPU 的 Tensor Core 计算单元。</p>
 <h3 id="2-Decode自回归解码--逐字生成阶段">2. Decode（自回归解码 / 逐字生成阶段）</h3>
 <ul>
   <li><strong>计算特征</strong>：每次根据上一个 token 生成下一个 token（即 $M=1$）。为了计算当前单个 Token 与历史所有上下文的注意力关联，必须从显存中完整读取历史所有已生成 Token 的 Key 和 Value（<strong>KV Cache</strong>）。</li>
   <li><strong>瓶颈类型</strong>：<strong>Memory-Bound（访存带宽受限）</strong>。</li>
+  <li>浮点计算量较小，但显存数据搬运量大。</li>
 </ul>
-<p>  - 浮点计算量较小，但显存数据搬运量大。</p>
 <div class="callout callout-note">
   <div class="callout-title">说明与背景</div>
 <p>算力访存比（Arithmetic Intensity）分析</p>
@@ -1043,14 +1047,34 @@ const half* k_ptr = kv_cache + physical_page * page_stride + page_offset * head_
 <div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$O^{\text{new}} = \frac{e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)} \cdot O^{(1)} \;+\; e^{m^{(2)} - m^{\text{new}}} \cdot l^{(2)} \cdot O^{(2)}}{l^{\text{new}}}$$</div>
 <p>亦可直观写为“<strong>旧结果衰减更新 + 新结果加权补入</strong>”的凸组合形式：</p>
 <div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$O^{\text{new}} = \left( \frac{l^{(1)} \cdot e^{m^{(1)} - m^{\text{new}}}}{l^{\text{new}}} \right) \cdot O^{(1)} \;+\; \left( \frac{l^{(2)} \cdot e^{m^{(2)} - m^{\text{new}}}}{l^{\text{new}}} \right) \cdot O^{(2)}$$</div>
-<div class="callout callout-note">
-  <div class="callout-title">说明与背景</div>
-<p>工程实现视角的微小差异说明</p>
-<p>在纯数学上两块完全对称，但在 CUDA Kernel 执行时两块的状态不同：</p>
-<p>1. <strong>旧块 Block 1（过去时）</strong>：原始 Token 已从片上释放，寄存器中只留存有标量 $l^{(1)}$ 和向量 $O^{(1)}$，因此必须通过乘法 $e^{\Delta m} \cdot l^{(1)} \cdot O^{(1)}$ 来还原分子并缩放；</p>
-<p>2. <strong>新块 Block 2（现在时）</strong>：当前物理块正在片上，程序可直接用 Tensor Core 执行局部未归一化矩阵乘 $\tilde{P}^{(2)} V^{(2)}$（其中 $\tilde{P}^{(2)} = \exp(Q K^{(2)T} - m^{(2)})$），无需先除以 $l^{(2)}$ 计算 $O^{(2)}$ 再乘以 $l^{(2)}$，从而在硬件层省去一次全量除法。两者在数学上是严格恒等的。</p>
-<p></p>
-</div>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h4 id="深入剖析为什么工程上可以省去除法数学约分与硬件考量">深入剖析：为什么工程上可以省去除法？（数学约分与硬件考量）</h4>
+<p>在纯数学递推中，Block 2 贡献的项写作：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\text{分子贡献项} = e^{m^{(2)} - m^{\text{new}}} \cdot \Big( l^{(2)} \cdot O^{(2)} \Big)$$</div>
+<p>很多读者会感到困惑：<strong>既然写了 $O^{(2)}$，为什么在工程代码中既看不到除以 $l^{(2)}$，也看不到乘以 $l^{(2)}$？</strong></p>
+<h5 id="1-数学上的直接约分抵消">1. 数学上的直接约分抵消</h5>
+<p>回顾两者的严格定义：</p>
+<ul>
+  <li><strong>未归一化的局部矩阵乘积</strong>：定义 $\tilde{P}^{(2)} = \exp\left(Q (K^{(2)})^\top - m^{(2)}\right)$，其与 $V^{(2)}$ 的矩阵乘积即为分子的原始加权和：</li>
+</ul>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\text{局部未归一化分子} = \tilde{P}^{(2)} V^{(2)} = \sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}} V_j^{(2)}$$</div>
+<ul>
+  <li><strong>局部归一化输出</strong>：定义为分子除以分母 $l^{(2)}$：</li>
+</ul>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$O^{(2)} = \frac{\tilde{P}^{(2)} V^{(2)}}{l^{(2)}}$$</div>
+<p>若机械地将 $O^{(2)}$ 带入递推公式，展开后会发现：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$l^{(2)} \cdot O^{(2)} = l^{(2)} \cdot \left( \frac{\tilde{P}^{(2)} V^{(2)}}{l^{(2)}} \right) = \tilde{P}^{(2)} V^{(2)}$$</div>
+<p><strong>关键结论</strong>：分母上的 $l^{(2)}$ 与外层的 $l^{(2)}$ 在数学上<strong>直接完全抵消</strong>！因此新块实际需要累加的分子项，纯粹就是：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$e^{m^{(2)} - m^{\text{new}}} \cdot \left( \tilde{P}^{(2)} V^{(2)} \right)$$</div>
+<h5 id="2-硬件层面的关键收益GPU-Tensor-Core-vs-浮点除法">2. 硬件层面的关键收益（GPU Tensor Core vs 浮点除法）</h5>
+<p>在 GPU 芯片底层硬件中，这一约分抵消带来了决定性的性能优势：</p>
+<ul>
+  <li><strong>Tensor Core 的极致吞吐</strong>：NVIDIA GPU（如 Tesla V100）的 Tensor Core 专门针对半精度矩阵乘累加（MMA）做了硬件级加速，单指令即可吞吐大规模矩阵乘，能极速算完 $\tilde{P}^{(2)} V^{(2)}$；</li>
+  <li><strong>浮点除法（DIV）极其昂贵</strong>：Tensor Core <strong>原生不支持除法</strong>！除法运算必须交给普通的通用算术单元（ALU/SFU）逐个标量串行计算，指令延迟长达数十个周期。如果每处理一个 Tile 都强行先做一次全量除法求出 $O^{(2)}$，会导致严重的计算单元流水线停顿（Stall）；</li>
+  <li><strong>流水线对比</strong>：</li>
+  <li><strong>低效做法（机械算 $O^{(2)}$）</strong>：Tensor Core 算完 $\tilde{P}^{(2)} V^{(2)} \to$ 打断流水线切换到通用 ALU 逐元素除以 $l^{(2)} \to$ 再乘回 $l^{(2)} \to$ 累加进寄存器；</li>
+  <li><strong>优化做法（利用数学抵消）</strong>：Tensor Core 算完 $\tilde{P}^{(2)} V^{(2)} \to$ 直接由 Tensor Core / FMA 乘以缩放因子累加进片上寄存器，<strong>全程无多余除法指令</strong>！</li>
+</ul>
 <hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
 <h4 id="递推结论与硬件状态演化">递推结论与硬件状态演化</h4>
 <p>在 CUDA Kernel 运行期间，每个线程/Warp 无需任何全局中间显存缓冲区，仅在<strong>片上寄存器</strong>中维持三个常数级状态变量：</p>

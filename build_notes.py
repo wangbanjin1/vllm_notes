@@ -355,24 +355,57 @@ def build_all():
 
 def build_index(articles):
     index_path = BASE_DIR / "index.html"
-    items_html = []
+    
+    # 按栏目分类
+    categories = {
+        "核心系统与硬件架构实战": [],
+        "知识点汇总": []
+    }
+    
     for item in articles:
-        items_html.append(f'''
-        <li style="margin-bottom: 14px; padding: 12px 16px; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 8px;">
-            <a href="html/{item['filename']}" style="font-size: 1.15rem; font-weight: 600; color: var(--accent-primary); text-decoration: none;">
-                {item['title']}
-            </a>
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;">
-                源文件：<code>markdown/{item['md_name']}</code> · 生成目标：<code>html/{item['filename']}</code>
-            </div>
-        </li>
+        if item['md_name'].startswith("knowledge_") or "知识点汇总" in item['title']:
+            categories["知识点汇总"].append(item)
+        else:
+            categories["核心系统与硬件架构实战"].append(item)
+
+    sections_html = []
+    category_icons = {
+        "核心系统与硬件架构实战": "⚡",
+        "知识点汇总": "💡"
+    }
+
+    for cat_name, cat_articles in categories.items():
+        if not cat_articles:
+            continue
+        items_html = []
+        for item in cat_articles:
+            items_html.append(f'''
+            <li style="margin-bottom: 14px; padding: 14px 18px; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 8px; transition: border-color 0.2s ease;">
+                <a href="html/{item['filename']}" style="font-size: 1.15rem; font-weight: 600; color: var(--accent-primary); text-decoration: none;">
+                    {item['title']}
+                </a>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;">
+                    源文件：<code>markdown/{item['md_name']}</code> · 生成目标：<code>html/{item['filename']}</code>
+                </div>
+            </li>
+            ''')
+        
+        sections_html.append(f'''
+        <section style="margin-bottom: 36px;">
+            <h2 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 16px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; color: var(--accent-primary);">
+                {category_icons.get(cat_name, '📌')} {cat_name}
+            </h2>
+            <ul style="list-style: none; padding: 0; margin: 0;">
+                {"".join(items_html)}
+            </ul>
+        </section>
         ''')
 
     index_html = f'''<!DOCTYPE html>
 <html lang="zh-CN" data-theme="parchment">
 <head>
     <meta charset="UTF-8">
-    <title>1Cat-vLLM 学习笔记索引目录</title>
+    <title>1Cat-vLLM 学习笔记与知识库索引</title>
     <style>
         :root[data-theme="parchment"] {{
             --bg-color: #f7f4ec;
@@ -401,19 +434,17 @@ def build_index(articles):
             line-height: 1.8;
             padding: 50px 24px;
         }}
-        .container {{ max-width: 800px; margin: 0 auto; }}
+        .container {{ max-width: 860px; margin: 0 auto; }}
         code {{ background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.88em; }}
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 style="margin-bottom: 8px;">1Cat-vLLM 源码精读与算子开发指南</h1>
-        <p style="color: var(--text-muted); margin-bottom: 30px;">
-            目录管理体系：修改 <code>learn_notes/markdown/*.md</code> 源码后，运行 <code>build_notes.bat</code> 即可全自动重新编译。
+        <h1 style="margin-bottom: 8px; font-size: 2rem;">1Cat-vLLM 源码精读与知识库导航</h1>
+        <p style="color: var(--text-muted); margin-bottom: 35px;">
+            笔记体系已划分为「核心系统与硬件架构实战」与「知识点汇总」两大独立栏目。修改 <code>markdown/*.md</code> 后运行 <code>build_notes.py</code> 即可重新编译生成。
         </p>
-        <ul style="list-style: none; padding: 0;">
-            {"".join(items_html)}
-        </ul>
+        {"".join(sections_html)}
     </div>
 </body>
 </html>

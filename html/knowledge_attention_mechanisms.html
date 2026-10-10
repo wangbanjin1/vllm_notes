@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="parchment">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>知识点汇总：注意力机制深度全解（从 MHA、MQA、GQA 到 MLA 与 KV Cache 演进） - 1Cat-vLLM 源码精读</title>
+    <!-- MathJax for rendering LaTeX formulas offline/online gracefully -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+            },
+            chtml: {
+                matchFontHeight: false
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" onerror="this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js';"></script>
+    <!-- Highlight.js for code syntax highlighting -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <style>
+        :root[data-theme="parchment"] {
+            --bg-color: #f7f4ec;
+            --surface-color: #eee9dc;
+            --surface-elevated: #e6dfcf;
+            --border-color: #dcd4c0;
+            --text-primary: #2d3748;
+            --text-secondary: #5c687a;
+            --text-muted: #798696;
+            --accent-primary: #a35d28;
+            --accent-glow: rgba(163, 93, 40, 0.08);
+            --code-bg: #eae3d2;
+            --code-text: #8d3a2b;
+            --pre-bg: #ece5d6;
+            --pre-text: #2d3748;
+            --callout-note-bg: #e5ede3;
+            --callout-note-border: #709775;
+            --callout-note-text: #2b5133;
+            --callout-warn-bg: #f5eedb;
+            --callout-warn-border: #c48a37;
+            --callout-warn-text: #704b12;
+            --callout-imp-bg: #e5eaf5;
+            --callout-imp-border: #5c7cb6;
+            --callout-imp-text: #1e3863;
+            --math-bg: #eee7d7;
+            --math-border: #c9bea6;
+            --table-header: #e4dccb;
+            --table-alt: #f1ecdf;
+            --tag-bg: #dfd5be;
+            --tag-text: #59472d;
+            --toggle-bg: #dfd6c2;
+        }
+
+        :root[data-theme="twilight"] {
+            --bg-color: #1a1e24;
+            --surface-color: #232931;
+            --surface-elevated: #2c343f;
+            --border-color: #39424e;
+            --text-primary: #dce1e8;
+            --text-secondary: #9da7b3;
+            --text-muted: #707b88;
+            --accent-primary: #e09f67;
+            --accent-glow: rgba(224, 159, 103, 0.1);
+            --code-bg: #15181d;
+            --code-text: #f08d70;
+            --pre-bg: #171b21;
+            --pre-text: #cdd3dc;
+            --callout-note-bg: #202b28;
+            --callout-note-border: #4d7a68;
+            --callout-note-text: #8bbfa8;
+            --callout-warn-bg: #2b251d;
+            --callout-warn-border: #8a6c38;
+            --callout-warn-text: #d9b168;
+            --callout-imp-bg: #1d2533;
+            --callout-imp-border: #4a638c;
+            --callout-imp-text: #96b5e3;
+            --math-bg: #1f252d;
+            --math-border: #3b4654;
+            --table-header: #262e38;
+            --table-alt: #1f242c;
+            --tag-bg: #323c48;
+            --tag-text: #d2a679;
+            --toggle-bg: #323b47;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.85;
+            padding: 30px 16px;
+            font-size: 16px;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .layout-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            max-width: 1360px;
+            margin: 0 auto;
+            gap: 36px;
+            position: relative;
+        }
+
+        /* 左侧大纲导航栏 */
+        .sidebar-toc {
+            width: 280px;
+            flex-shrink: 0;
+            position: sticky;
+            top: 24px;
+            max-height: calc(100vh - 48px);
+            display: flex;
+            flex-direction: column;
+            transition: all 0.25s ease;
+            z-index: 90;
+        }
+
+        .toc-card {
+            background-color: var(--surface-color);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 48px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
+        }
+
+        .toc-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 12px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .toc-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .toc-title svg {
+            color: var(--accent-primary);
+        }
+
+        .toc-action-btn {
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .toc-action-btn:hover {
+            background: var(--surface-elevated);
+            color: var(--accent-primary);
+            border-color: var(--border-color);
+        }
+
+        .toc-body {
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 4px;
+        }
+
+        .toc-body::-webkit-scrollbar {
+            width: 5px;
+        }
+        .toc-body::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        .toc-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .toc-item {
+            margin: 2px 0;
+            line-height: 1.4;
+        }
+
+        .toc-level-2 {
+            margin-top: 8px;
+            padding-left: 0;
+        }
+
+        .toc-level-3 {
+            padding-left: 14px;
+        }
+
+        .toc-level-4 {
+            padding-left: 26px;
+        }
+
+        .toc-link {
+            display: block;
+            padding: 5px 8px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.86rem;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-left: 2px solid transparent;
+        }
+
+        .toc-level-2 > .toc-link {
+            font-weight: 600;
+            font-size: 0.88rem;
+        }
+
+        .toc-level-3 > .toc-link {
+            font-size: 0.83rem;
+        }
+
+        .toc-level-4 > .toc-link {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .toc-link:hover {
+            color: var(--accent-primary);
+            background: var(--accent-glow);
+        }
+
+        .toc-link.active {
+            color: var(--accent-primary);
+            background: var(--accent-glow);
+            border-left-color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        .toc-empty {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            padding: 10px 0;
+            text-align: center;
+        }
+
+        .main-content {
+            flex: 1;
+            min-width: 0;
+            max-width: 920px;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+        }
+
+        /* 侧边栏收起状态 */
+        body.toc-collapsed .sidebar-toc {
+            display: none;
+        }
+
+        body.toc-collapsed #expandTocBtn {
+            display: inline-flex !important;
+        }
+
+        /* 移动端/小屏幕样式 */
+        .mobile-toc-toggle {
+            display: none;
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            z-index: 999;
+            background: var(--accent-primary);
+            color: #fff;
+            border: none;
+            border-radius: 30px;
+            padding: 10px 18px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .toc-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(2px);
+            z-index: 990;
+        }
+
+        @media (max-width: 1120px) {
+            .sidebar-toc {
+                position: fixed;
+                top: 0;
+                left: -320px;
+                width: 300px;
+                height: 100vh;
+                max-height: 100vh;
+                z-index: 1000;
+                padding: 16px;
+                background: var(--bg-color);
+            }
+
+            .sidebar-toc.open {
+                left: 0;
+                box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
+            }
+
+            .mobile-toc-toggle {
+                display: inline-flex;
+            }
+
+            body.toc-drawer-open .toc-backdrop {
+                display: block;
+            }
+
+            #expandTocBtn {
+                display: none !important;
+            }
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .nav-btn {
+            background-color: var(--surface-color);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+
+        .nav-btn:hover {
+            color: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .theme-switch-btn {
+            background-color: var(--toggle-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+
+        .theme-switch-btn:hover {
+            opacity: 0.9;
+        }
+
+        header {
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 24px;
+            margin-bottom: 36px;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            scroll-margin-top: 36px;
+        }
+
+        h1 {
+            font-size: 2.1rem;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            line-height: 1.35;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+
+        h2 {
+            font-size: 1.45rem;
+            margin-top: 42px;
+            margin-bottom: 18px;
+            color: var(--text-primary);
+            border-left: 4px solid var(--accent-primary);
+            padding-left: 14px;
+            font-weight: 600;
+        }
+
+        h3 {
+            font-size: 1.15rem;
+            margin-top: 24px;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        h4 {
+            font-size: 1.02rem;
+            margin-top: 18px;
+            margin-bottom: 10px;
+            color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        h5, h6 {
+            font-size: 0.95rem;
+            margin-top: 14px;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        p {
+            margin-bottom: 18px;
+            color: var(--text-primary);
+        }
+
+        ul, ol {
+            margin-bottom: 18px;
+            padding-left: 24px;
+        }
+
+        li {
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        code {
+            font-family: "JetBrains Mono", Consolas, Menlo, Monaco, monospace;
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-size: 0.88em;
+        }
+
+        .code-block {
+            background-color: var(--pre-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin: 24px 0;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 7px 14px;
+            background-color: var(--surface-color);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.78rem;
+            user-select: none;
+        }
+
+        .code-lang {
+            font-family: "JetBrains Mono", Consolas, Menlo, Monaco, monospace;
+            font-weight: 700;
+            color: var(--accent-primary);
+            letter-spacing: 0.5px;
+        }
+
+        .copy-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            color: var(--text-muted);
+            padding: 3px 9px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            color: var(--accent-primary);
+            border-color: var(--accent-primary);
+            background: var(--surface-elevated);
+        }
+
+        .copy-btn.copied {
+            color: #2b5133;
+            border-color: #709775;
+            background: #e5ede3;
+        }
+
+        :root[data-theme="twilight"] .copy-btn.copied {
+            color: #8bbfa8;
+            border-color: #4d7a68;
+            background: #202b28;
+        }
+
+        pre {
+            background-color: transparent;
+            border: none;
+            padding: 16px 18px;
+            overflow-x: auto;
+            margin: 0;
+            line-height: 1.65;
+        }
+
+        pre code {
+            background-color: transparent;
+            color: var(--pre-text);
+            padding: 0;
+            border-radius: 0;
+            font-size: 0.9rem;
+            font-family: "JetBrains Mono", Consolas, Menlo, Monaco, monospace;
+            display: block;
+        }
+
+        /* 语法高亮样式 (米纸主题 Parchment) */
+        :root[data-theme="parchment"] .hljs-comment,
+        :root[data-theme="parchment"] .hljs-quote {
+            color: #798696;
+            font-style: italic;
+        }
+        :root[data-theme="parchment"] .hljs-keyword,
+        :root[data-theme="parchment"] .hljs-selector-tag {
+            color: #b83a21;
+            font-weight: 600;
+        }
+        :root[data-theme="parchment"] .hljs-type,
+        :root[data-theme="parchment"] .hljs-class .hljs-title {
+            color: #8d3a2b;
+            font-weight: 600;
+        }
+        :root[data-theme="parchment"] .hljs-string,
+        :root[data-theme="parchment"] .hljs-addition {
+            color: #2c7a3f;
+        }
+        :root[data-theme="parchment"] .hljs-number,
+        :root[data-theme="parchment"] .hljs-literal {
+            color: #a35d28;
+            font-weight: 600;
+        }
+        :root[data-theme="parchment"] .hljs-title,
+        :root[data-theme="parchment"] .hljs-function {
+            color: #1e3863;
+            font-weight: 600;
+        }
+        :root[data-theme="parchment"] .hljs-built_in,
+        :root[data-theme="parchment"] .hljs-symbol {
+            color: #2b5133;
+        }
+        :root[data-theme="parchment"] .hljs-meta {
+            color: #704b12;
+        }
+        :root[data-theme="parchment"] .hljs-variable,
+        :root[data-theme="parchment"] .hljs-template-variable {
+            color: #2d3748;
+        }
+
+        /* 语法高亮样式 (暮色主题 Twilight) */
+        :root[data-theme="twilight"] .hljs-comment,
+        :root[data-theme="twilight"] .hljs-quote {
+            color: #636e7b;
+            font-style: italic;
+        }
+        :root[data-theme="twilight"] .hljs-keyword,
+        :root[data-theme="twilight"] .hljs-selector-tag {
+            color: #e09f67;
+            font-weight: 600;
+        }
+        :root[data-theme="twilight"] .hljs-type,
+        :root[data-theme="twilight"] .hljs-class .hljs-title {
+            color: #e5c07b;
+            font-weight: 600;
+        }
+        :root[data-theme="twilight"] .hljs-string,
+        :root[data-theme="twilight"] .hljs-addition {
+            color: #98c379;
+        }
+        :root[data-theme="twilight"] .hljs-number,
+        :root[data-theme="twilight"] .hljs-literal {
+            color: #d19a66;
+            font-weight: 600;
+        }
+        :root[data-theme="twilight"] .hljs-title,
+        :root[data-theme="twilight"] .hljs-function {
+            color: #61afef;
+            font-weight: 600;
+        }
+        :root[data-theme="twilight"] .hljs-built_in,
+        :root[data-theme="twilight"] .hljs-symbol {
+            color: #56b6c2;
+        }
+        :root[data-theme="twilight"] .hljs-meta {
+            color: #be5046;
+        }
+        :root[data-theme="twilight"] .hljs-variable,
+        :root[data-theme="twilight"] .hljs-template-variable {
+            color: #abb2bf;
+        }
+
+        blockquote {
+            background-color: var(--surface-color);
+            border-left: 4px solid var(--border-color);
+            padding: 14px 18px;
+            border-radius: 0 6px 6px 0;
+            margin: 20px 0;
+            color: var(--text-secondary);
+        }
+
+        .callout {
+            border-radius: 8px;
+            padding: 18px 22px;
+            margin: 24px 0;
+        }
+
+        .callout.callout-note {
+            background-color: var(--callout-note-bg);
+            border-left: 4px solid var(--callout-note-border);
+        }
+
+        .callout.callout-note .callout-title {
+            color: var(--callout-note-text);
+        }
+
+        .callout.callout-warning {
+            background-color: var(--callout-warn-bg);
+            border-left: 4px solid var(--callout-warn-border);
+        }
+
+        .callout.callout-warning .callout-title {
+            color: var(--callout-warn-text);
+        }
+
+        .callout.callout-important {
+            background-color: var(--callout-imp-bg);
+            border-left: 4px solid var(--callout-imp-border);
+        }
+
+        .callout.callout-important .callout-title {
+            color: var(--callout-imp-text);
+        }
+
+        .callout-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            font-size: 1.02rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+            font-size: 0.94rem;
+        }
+
+        th, td {
+            border: 1px solid var(--border-color);
+            padding: 12px 16px;
+            text-align: left;
+        }
+
+        th {
+            background-color: var(--table-header);
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) {
+            background-color: var(--table-alt);
+        }
+
+        .source-meta {
+            background-color: var(--surface-color);
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        footer {
+            margin-top: 40px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- 移动端大纲浮动按钮与背景遮罩 -->
+    <button class="mobile-toc-toggle" onclick="toggleMobileToc()" id="mobileTocBtn" title="展开/收起目录大纲">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"></line>
+            <line x1="8" y1="12" x2="21" y2="12"></line>
+            <line x1="8" y1="18" x2="21" y2="18"></line>
+            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+        </svg>
+        <span>目录</span>
+    </button>
+    <div class="toc-backdrop" onclick="toggleMobileToc()"></div>
+
+    <div class="layout-wrapper">
+        <!-- 左侧大纲预览 -->
+        <aside class="sidebar-toc" id="sidebarToc">
+            <div class="toc-card">
+                <div class="toc-header">
+                    <div class="toc-title">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        <span>大纲预览</span>
+                    </div>
+                    <button class="toc-action-btn" onclick="toggleDesktopToc()" title="收起大纲">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15 18 9 12 15 6"></polyline>
+                        </svg>
+                    </button>
+                </div>
+                <nav class="toc-body">
+                    <ul class="toc-list">
+  <li class="toc-item toc-level-2"><a href="#一为什么注意力机制一直在变核心矛盾KV-Cache-显存墙" class="toc-link" title="一、为什么注意力机制一直在变？（核心矛盾：KV Cache 显存墙）">一、为什么注意力机制一直在变？（核心矛盾：KV Cache 显存墙）</a></li>
+  <li class="toc-item toc-level-3"><a href="#1-显存墙与-Roofline-模型" class="toc-link" title="1. 显存墙与 Roofline 模型">1. 显存墙与 Roofline 模型</a></li>
+  <li class="toc-item toc-level-3"><a href="#2-长序列下的-KV-Cache-爆炸" class="toc-link" title="2. 长序列下的 KV Cache 爆炸">2. 长序列下的 KV Cache 爆炸</a></li>
+  <li class="toc-item toc-level-2"><a href="#二基础概念厘清什么是头与头维度" class="toc-link" title="二、基础概念厘清：什么是“头”与“头维度”？">二、基础概念厘清：什么是“头”与“头维度”？</a></li>
+  <li class="toc-item toc-level-3"><a href="#1-维度对应关系" class="toc-link" title="1. 维度对应关系">1. 维度对应关系</a></li>
+  <li class="toc-item toc-level-3"><a href="#2-为什么需要划分为多头" class="toc-link" title="2. 为什么需要划分为“多头”？">2. 为什么需要划分为“多头”？</a></li>
+  <li class="toc-item toc-level-2"><a href="#三四大注意力机制演进全景" class="toc-link" title="三、四大注意力机制演进全景">三、四大注意力机制演进全景</a></li>
+  <li class="toc-item toc-level-3"><a href="#1-MHA-Multi-Head-Attention标准多头注意力" class="toc-link" title="1. MHA Multi-Head Attention，标准多头注意力">1. MHA (Multi-Head Attention，标准多头注意力)</a></li>
+  <li class="toc-item toc-level-4"><a href="#结构定义" class="toc-link" title="结构定义">结构定义</a></li>
+  <li class="toc-item toc-level-4"><a href="#KV-Cache-显存开销公式" class="toc-link" title="KV Cache 显存开销公式">KV Cache 显存开销公式</a></li>
+  <li class="toc-item toc-level-3"><a href="#2-MQA-Multi-Query-Attention多查询注意力" class="toc-link" title="2. MQA Multi-Query Attention，多查询注意力">2. MQA (Multi-Query Attention，多查询注意力)</a></li>
+  <li class="toc-item toc-level-4"><a href="#结构定义-1" class="toc-link" title="结构定义">结构定义</a></li>
+  <li class="toc-item toc-level-4"><a href="#收益与致命缺陷" class="toc-link" title="收益与致命缺陷">收益与致命缺陷</a></li>
+  <li class="toc-item toc-level-3"><a href="#3-GQA-Grouped-Query-Attention分组查询注意力" class="toc-link" title="3. GQA Grouped-Query Attention，分组查询注意力">3. GQA (Grouped-Query Attention，分组查询注意力)</a></li>
+  <li class="toc-item toc-level-4"><a href="#结构定义-2" class="toc-link" title="结构定义">结构定义</a></li>
+  <li class="toc-item toc-level-4"><a href="#工程收益与工业地位" class="toc-link" title="工程收益与工业地位">工程收益与工业地位</a></li>
+  <li class="toc-item toc-level-3"><a href="#4-MLA-Multi-Head-Latent-Attention多头潜在注意力" class="toc-link" title="4. MLA Multi-Head Latent Attention，多头潜在注意力">4. MLA (Multi-Head Latent Attention，多头潜在注意力)</a></li>
+  <li class="toc-item toc-level-4"><a href="#核心思考GQA-的局限" class="toc-link" title="核心思考：GQA 的局限">核心思考：GQA 的局限</a></li>
+  <li class="toc-item toc-level-4"><a href="#核心机制一低秩联合压缩Low-Rank-Joint-Compression" class="toc-link" title="核心机制一：低秩联合压缩（Low-Rank Joint Compression）">核心机制一：低秩联合压缩（Low-Rank Joint Compression）</a></li>
+  <li class="toc-item toc-level-4"><a href="#核心机制二矩阵吸收Weight-Absorbing与推理无损还原" class="toc-link" title="核心机制二：矩阵吸收（Weight Absorbing）与推理无损还原">核心机制二：矩阵吸收（Weight Absorbing）与推理无损还原</a></li>
+  <li class="toc-item toc-level-4"><a href="#核心机制三解耦旋转位置编码Decoupled-RoPE" class="toc-link" title="核心机制三：解耦旋转位置编码（Decoupled RoPE）">核心机制三：解耦旋转位置编码（Decoupled RoPE）</a></li>
+  <li class="toc-item toc-level-2"><a href="#四四大注意力机制横向对比与选型全景" class="toc-link" title="四、四大注意力机制横向对比与选型全景">四、四大注意力机制横向对比与选型全景</a></li>
+  <li class="toc-item toc-level-2"><a href="#五在推理系统vLLM--PagedAttention中的协同考量" class="toc-link" title="五、在推理系统（vLLM / PagedAttention）中的协同考量">五、在推理系统（vLLM / PagedAttention）中的协同考量</a></li>
+</ul>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <div class="container">
+                <div class="top-bar">
+                    <div class="nav-links">
+                        <button class="nav-btn" id="expandTocBtn" onclick="toggleDesktopToc()" style="display: none;" title="展开大纲侧边栏">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                            <span>显示大纲</span>
+                        </button>
+                        <a href="../index.html" class="nav-btn">目录总览</a>
+                        <span style="color: var(--border-color)">|</span>
+                        <span style="font-size: 0.88rem; color: var(--text-muted);">markdown/knowledge_attention_mechanisms.md</span>
+                    </div>
+                    <button class="theme-switch-btn" onclick="toggleTheme()" id="themeBtn">
+                        切换暮色
+                    </button>
+                </div>
+
+                <article class="markdown-body">
+                    <h1 id="知识点汇总注意力机制深度全解从-MHAMQAGQA-到-MLA-与-KV-Cache-演进">知识点汇总：注意力机制深度全解（从 MHA、MQA、GQA 到 MLA 与 KV Cache 演进）</h1>
+<blockquote><strong>栏目</strong>：知识点汇总 · 注意力机制全景精读  </blockquote>
+<blockquote><strong>核心主题</strong>：多头注意力概念厘清、KV Cache 显存墙瓶颈、MHA / MQA / GQA / MLA 架构演进与数学推导、DeepSeek 矩阵吸收工程实践</blockquote>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h2 id="一为什么注意力机制一直在变核心矛盾KV-Cache-显存墙">一、为什么注意力机制一直在变？（核心矛盾：KV Cache 显存墙）</h2>
+<p>在大模型推理的自回归生成阶段（Token-by-Token Decode 阶段），硬件的计算模式存在一个根本性的物理瓶颈：<strong>Memory-Bound（访存受限）</strong>。</p>
+<h3 id="1-显存墙与-Roofline-模型">1. 显存墙与 Roofline 模型</h3>
+<p>在生成每一个新 Token 时，GPU 只需要对当前这 1 个 Token 计算向量投影，计算量（FLOPs）极小；但为了计算自注意力，GPU <strong>必须把历史上所有已经生成过的 Token 的 Key 和 Value 矩阵从全局显存（HBM / DRAM）完整搬运到片上 SRAM</strong>。</p>
+<ul>
+  <li><strong>算力与访存的失衡</strong>：以 NVIDIA Tesla V100 为例，其半精度 Tensor Core 算力高达 <strong>125 TFLOP/s</strong>，而全局显存带宽仅有 <strong>900 GB/s</strong>。</li>
+  <li><strong>算术强度（Operational Intensity）极低</strong>：在 Decode 阶段，单步生成的计算访存比往往小于 1 FLOP/Byte，使得 GPU 的超大规模计算单元（Tensor Core）绝大部分时间都在<strong>饥饿等待显存数据搬运</strong>。</li>
+</ul>
+<h3 id="2-长序列下的-KV-Cache-爆炸">2. 长序列下的 KV Cache 爆炸</h3>
+<p>随着上下文窗口从 4K 扩展到 32K、128K 乃至 1M，KV Cache 占用的显存空间随序列长度 $L$ 呈<strong>严格线性增长</strong>。在并发 Batch Size 增加时，KV Cache 会极其迅速地吞噬掉所有 GPU 显存，导致并发承载能力断崖式下跌。</p>
+<div class="callout callout-important">
+  <div class="callout-title">核心公式与结论</div>
+<p><strong>注意力机制的演进主线</strong>：</p>
+<p>从 2017 年的原始 Transformer 到如今最新的 DeepSeek-V3，注意力机制结构演化的核心驱动力只有一个——<strong>在尽可能保全模型表达能力的前提下，极度压缩 KV Cache 的显存容量与每次自回归解码的访存带宽！</strong></p>
+<p></p>
+</div>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h2 id="二基础概念厘清什么是头与头维度">二、基础概念厘清：什么是“头”与“头维度”？</h2>
+<p>很多初学者容易混淆多头注意力（MHA）中的各个维度概念，我们在此建立严格的数学定义。</p>
+<div class="code-block">
+  <div class="code-header">
+    <span class="code-lang">TEXT</span>
+    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>复制</span>
+    </button>
+  </div>
+  <pre><code class="language-text">输入张量 X (维度: hidden_size / d_model)
+                   │
+    ┌──────────────┼──────────────┐
+    ▼ 投影为 Q     ▼ 投影为 K     ▼ 投影为 V
+ [num_heads,   [num_heads,   [num_heads,
+   head_dim]     head_dim]     head_dim]</code></pre>
+</div>
+<h3 id="1-维度对应关系">1. 维度对应关系</h3>
+<p>设大模型的隐藏层维度为 $d_{\text{model}}$（亦称 <code>hidden_size</code>），注意力头总数为 $n_{\text{heads}}$，则每一个“头”（Head）的特征维度 $d_{\text{head}}$ 满足：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$d_{\text{head}} = \frac{d_{\text{model}}}{n_{\text{heads}}}$$</div>
+<p>以典型主流模型为例：</p>
+<ul>
+  <li><strong>LLaMA-2-7B</strong>：$d_{\text{model}} = 4096$，$n_{\text{heads}} = 32$，则单个头的维度为：</li>
+</ul>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$d_{\text{head}} = \frac{4096}{32} = 128$$</div>
+<ul>
+  <li><strong>LLaMA-3-8B</strong>：同样为 $d_{\text{model}} = 4096$，$n_{\text{heads}} = 32$，$d_{\text{head}} = 128$。</li>
+  <li><strong>部分大尺寸或多模态模型</strong>：如 Qwen-2.5 某些配置或特殊多头设计，可能采用 $d_{\text{head}} = 64$ 或 $d_{\text{head}} = 256$。</li>
+</ul>
+<h3 id="2-为什么需要划分为多头">2. 为什么需要划分为“多头”？</h3>
+<p>单头注意力只能把所有上下文信息压缩到一个统一的注意力权重分布上；而多头注意力将高维向量投影到多个独立的<strong>低维特征子空间（Subspaces）</strong>中：</p>
+<ul>
+  <li>Head 0 可能专注于捕捉<strong>局部语法短语</strong>结构；</li>
+  <li>Head 1 可能专注于追踪<strong>长程代词指代</strong>关系；</li>
+  <li>Head 2 可能专注于识别<strong>标点符号与句子边界</strong>。</li>
+</ul>
+<p>多头机制赋予了模型同时关注来自不同子空间中不同位置信息的能力。</p>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h2 id="三四大注意力机制演进全景">三、四大注意力机制演进全景</h2>
+<div class="code-block">
+  <div class="code-header">
+    <span class="code-lang">TEXT</span>
+    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>复制</span>
+    </button>
+  </div>
+  <pre><code class="language-text"> ┌────────────────────────────────────────────────────────────────────────┐
+ │ 1. MHA (Multi-Head Attention): 1 对 1 独立头绑定                      │
+ │    Q0 ──&gt; K0, V0    Q1 ──&gt; K1, V1    ...    Q(N-1) ──&gt; K(N-1), V(N-1) │
+ └────────────────────────────────────────────────────────────────────────┘
+                                     │
+                    极度追求显存削减：所有 Q 共享 1 个 KV
+                                     ▼
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │ 2. MQA (Multi-Query Attention): N 对 1 极限共享                       │
+ │    Q0, Q1, Q2, ..., Q(N-1) ───────────────&gt; K, V (全局仅 1 组 KV)      │
+ └────────────────────────────────────────────────────────────────────────┘
+                                     │
+                    工程折中妥协：平衡表达精度与显存
+                                     ▼
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │ 3. GQA (Grouped-Query Attention): 分组折中共享 (工业主流，如 8:1)     │
+ │    Group 0: Q0 ~ Q7 ──&gt; K0, V0                                         │
+ │    Group 1: Q8 ~ Q15 ──&gt; K1, V1                                        │
+ └────────────────────────────────────────────────────────────────────────┘
+                                     │
+                    突破头数删减：低秩联合投影 + 矩阵吸收 (DeepSeek 创新)
+                                     ▼
+ ┌────────────────────────────────────────────────────────────────────────┐
+ │ 4. MLA (Multi-Head Latent Attention): 低秩隐空间联合压缩               │
+ │    KV Cache 只存一个低维隐向量 c_t (如 512维)                          │
+ │    计算时利用结合律直接将解码矩阵吸收进 Q，兼具 MHA 表达力与极限压缩   │
+ └────────────────────────────────────────────────────────────────────────┘</code></pre>
+</div>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h3 id="1-MHA-Multi-Head-Attention标准多头注意力">1. MHA (Multi-Head Attention，标准多头注意力)</h3>
+<h4 id="结构定义">结构定义</h4>
+<p>在经典 Transformer 中，$Q, K, V$ 拥有完全相同数量的头数：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$n_q = n_k = n_v = N$$</div>
+<p>每个头独立拥有各自的投影权重矩阵 $W_i^Q, W_i^K, W_i^V \in \mathbb{R}^{d_{\text{model}} \times d_{\text{head}}}$：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\text{head}_i = \text{Softmax}\left(\frac{Q_i K_i^\top}{\sqrt{d_{\text{head}}}}\right) V_i$$</div>
+<h4 id="KV-Cache-显存开销公式">KV Cache 显存开销公式</h4>
+<p>对于一个具有 $L_{\text{layer}}$ 层 Transformer、总头数为 $n_{\text{heads}}$、头维度为 $d_{\text{head}}$ 的模型，单个 Token 采用 FP16（每个元素 2 字节）存储时，每一层需要保存 $K$ 和 $V$ 两个张量：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\text{单 Token 显存占用} = 2 \times n_{\text{heads}} \times d_{\text{head}} \times 2 \text{ Bytes} = 4 \times n_{\text{heads}} \times d_{\text{head}} \text{ Bytes/层}$$</div>
+<p>对于序列长度为 $S$、并发 Batch Size 为 $B$ 的请求，总 KV Cache 显存占用为：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\text{Total KV Cache}_{\text{MHA}} = 4 \cdot B \cdot S \cdot L_{\text{layer}} \cdot n_{\text{heads}} \cdot d_{\text{head}} \text{ Bytes}$$</div>
+<blockquote><strong>算例</strong>：以 70B 模型（$L_{\text{layer}}=80, n_{\text{heads}}=64, d_{\text{head}}=128$）为例：</blockquote>
+<blockquote>单个 Token 在单层占用 $4 \times 64 \times 128 = 32 \text{ KB}$；80 层总计 <strong>2.56 MB / Token</strong>！  </blockquote>
+<blockquote>若并发处理 32 个长度为 8K 的请求，仅 KV Cache 就需要：</blockquote>
+<blockquote>$$32 \times 8192 \times 2.56 \text{ MB} \approx \mathbf{671 \text{ GB 显存}}！$$</blockquote>
+<blockquote>这需要足足 9 张 80GB A100 显卡仅仅用来存 KV Cache，完全无法支撑高并发。</blockquote>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h3 id="2-MQA-Multi-Query-Attention多查询注意力">2. MQA (Multi-Query Attention，多查询注意力)</h3>
+<h4 id="结构定义-1">结构定义</h4>
+<p>为了彻底解决显存瓶颈，Noam Shazeer 于 2019 年提出了 MQA：</p>
+<ul>
+  <li>Query 保持原有的 $N$ 个头不变：$n_q = N$；</li>
+  <li><strong>Key 和 Value 整个层只有 1 个头</strong>：$n_k = n_v = 1$。</li>
+</ul>
+<p>所有 $N$ 个 Query 头在计算注意力打分时，共享同一份 $K$ 和 $V$：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\text{head}_i = \text{Softmax}\left(\frac{Q_i K^\top}{\sqrt{d_{\text{head}}}}\right) V$$</div>
+<h4 id="收益与致命缺陷">收益与致命缺陷</h4>
+<ul>
+  <li><strong>收益</strong>：KV Cache 显存体积直接缩减为 MHA 的 $\frac{1}{N}$！如果原本有 32 个头，KV Cache 显存<strong>暴降 96.9%</strong>，显存读取带宽压力几乎归零。</li>
+  <li><strong>缺陷</strong>：由于全网只有一组 Key 和 Value，所有的 Query 头被迫在完全相同的上下文语义池中打分，模型失去了在不同子空间捕捉不同特征的能力，导致大模型在复杂推理、长文本关联等任务上<strong>严重欠拟合，精度出现显著下跌</strong>。</li>
+</ul>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h3 id="3-GQA-Grouped-Query-Attention分组查询注意力">3. GQA (Grouped-Query Attention，分组查询注意力)</h3>
+<h4 id="结构定义-2">结构定义</h4>
+<p>GQA 是在 MHA 与 MQA 之间取得最佳折中的工业界统一标准（2023 年提出）：</p>
+<ul>
+  <li>将 $n_q = N$ 个 Query 头均分成 $G$ 个分组（Group）；</li>
+  <li>每一组包含 $\frac{N}{G}$ 个 Query 头，这一组 Query 头<strong>共享 1 个 Key 头和 1 个 Value 头</strong>；</li>
+  <li>Key 和 Value 的头数变为 $n_k = n_v = G$。</li>
+</ul>
+<p>典型配置是 $8 : 1$（例如 32 个 Q 头配 4 个 KV 头）或 $6 : 1$。</p>
+<div class="code-block">
+  <div class="code-header">
+    <span class="code-lang">TEXT</span>
+    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>复制</span>
+    </button>
+  </div>
+  <pre><code class="language-text">以 8:1 共享比例为例:
+[Group 0] Q0, Q1, Q2, Q3, Q4, Q5, Q6, Q7  ───&gt; 共享 K0, V0
+[Group 1] Q8, Q9, Q10, Q11, Q12, Q13, Q14, Q15 ──&gt; 共享 K1, V1
+...</code></pre>
+</div>
+<h4 id="工程收益与工业地位">工程收益与工业地位</h4>
+<ol>
+  <li><strong>显存降低 87.5%</strong>（以 8:1 为例）：KV Cache 体积仅为 MHA 的 $1/8$，极大缓解了显存墙；</li>
+  <li><strong>精度几乎无损</strong>：实验表明，经过充分训练后，GQA 在绝大部分评测基准上的表现与 MHA 几乎完全无差异；</li>
+  <li><strong>成为当今开源大模型绝对主流</strong>：LLaMA-2/3、Qwen-2/2.5、Mistral、Gemma 均全面拥抱 GQA。</li>
+</ol>
+<div class="callout callout-note">
+  <div class="callout-title">说明与背景</div>
+<p><strong>与推理引擎优化联动</strong>：</p>
+<p>正是由于 GQA 拥有多头共享同一份 KV 的特性，在 1Cat-vLLM 等推理算子中，才诞生了 <strong>GQA-packed Wide GEMM</strong>：将属于同一个 KV 分组的多个 Q 头在行维度打包拼接，只做单次宽矩阵乘，从而消除同一份 KV 在显存中的多次重复加载！</p>
+<p></p>
+</div>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h3 id="4-MLA-Multi-Head-Latent-Attention多头潜在注意力">4. MLA (Multi-Head Latent Attention，多头潜在注意力)</h3>
+<p>MLA 是 DeepSeek 在 <strong>DeepSeek-V2</strong> 中提出并沿用至 <strong>DeepSeek-V3 / R1</strong> 的革命性注意力架构。</p>
+<h4 id="核心思考GQA-的局限">核心思考：GQA 的局限</h4>
+<p>GQA 的压缩本质是<strong>“硬性删减 KV 头的数量”</strong>，虽然比 MQA 好，但仍然不可避免地压缩了 Key/Value 的表征自由度。  </p>
+<p>DeepSeek 提出了颠覆性的逆向思考：</p>
+<blockquote><strong>我们能不能在计算时依然拥有等价于完整 MHA（例如 128 个头）的庞大表征空间，而在将数据写入显存（KV Cache）时进行极致压缩？</strong></blockquote>
+<h4 id="核心机制一低秩联合压缩Low-Rank-Joint-Compression">核心机制一：低秩联合压缩（Low-Rank Joint Compression）</h4>
+<p>MLA 不直接把每一层的隐藏状态 $h_t$ 投影成多头 $K$ 和 $V$，而是先用一个降维矩阵 $W^{DKV}$ 将它们联合压缩成一个<strong>低维隐向量（Latent Vector）</strong> $\mathbf{c}_t^{KV}$：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\mathbf{c}_t^{KV} = W^{DKV} h_t \quad (\mathbf{c}_t^{KV} \in \mathbb{R}^{d_c})$$</div>
+<p>其中压缩维度 $d_c$（例如 512 维）远小于所有多头展开后的总维度（$n_h \times d_h = 128 \times 128 = 16384$ 维）。</p>
+<p>在显存中，<strong>KV Cache 彻底抛弃了展开后的多头 Key 和 Value，仅仅保存这个极短的低维向量 $\mathbf{c}_t^{KV}$！</strong></p>
+<div class="code-block">
+  <div class="code-header">
+    <span class="code-lang">TEXT</span>
+    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>复制</span>
+    </button>
+  </div>
+  <pre><code class="language-text">传统 MHA KV Cache 存储内容:
+[ Head 0 ] [ Head 1 ] ... [ Head 127 ] ──&gt; 巨幅显存开销
+
+MLA KV Cache 存储内容:
+[              低维隐向量 c_t^{KV} (仅 512 维)              ] ──&gt; 显存压缩数倍！</code></pre>
+</div>
+<h4 id="核心机制二矩阵吸收Weight-Absorbing与推理无损还原">核心机制二：矩阵吸收（Weight Absorbing）与推理无损还原</h4>
+<p>如果在每次推理时，都要先把 $\mathbf{c}_t^{KV}$ 乘以升维矩阵 $W^{UK}$ 展开成完整的多头 Key，那么依然会在片上产出巨大的张量，得不偿失。  </p>
+<p>MLA 运用了<strong>矩阵结合律</strong>实现了神级的计算融合：</p>
+<p>根据定义，还原出的第 $i$ 个 Key 为：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$K_i = W_i^{UK} \mathbf{c}_t^{KV}$$</div>
+<p>Query 与 Key 的点积打分为：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$Q_i K_i^\top = Q_i \left( W_i^{UK} \mathbf{c}_t^{KV} \right)^\top = Q_i \left( \mathbf{c}_t^{KV} \right)^\top (W_i^{UK})^\top = \left( Q_i W_i^{UK} \right) \left( \mathbf{c}_t^{KV} \right)^\top$$</div>
+<div class="callout callout-note">
+  <div class="callout-title">说明与背景</div>
+<p><strong>关键数学结论（矩阵吸收）</strong>：</p>
+<p>升维矩阵 $W_i^{UK}$ 是<strong>静态模型权重</strong>！在自回归推理期间，我们<strong>根本不需要在显存中展开 Key</strong>！</p>
+<p>只需要在算完当前 Token 的 $Q_i$ 之后，直接用 $Q_i$ 乘以上层权重矩阵 $W_i^{UK}$，得到一个吸收后的新查询向量：</p>
+<div style="text-align:center; margin: 12px 0;">$$\tilde{Q}_i = Q_i W_i^{UK}$$</div>
+<p>然后直接拿 $\tilde{Q}_i$ 与显存中缓存的低维隐向量 $\mathbf{c}_t^{KV}$ 做点积即可！对 Value 的计算也具有完全相同的吸收对称性。</p>
+<p></p>
+</div>
+<h4 id="核心机制三解耦旋转位置编码Decoupled-RoPE">核心机制三：解耦旋转位置编码（Decoupled RoPE）</h4>
+<p>如果将旋转位置编码（RoPE）直接乘在 $K$ 上：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$K_i^{\text{RoPE}} = \mathcal{R}_t \left( W_i^{UK} \mathbf{c}_t^{KV} \right)$$</div>
+<p>由于位置旋转矩阵 $\mathcal{R}_t$ 与时间步 $t$ 强绑定且不满足简单的矩阵交换律，<strong>它会彻底破坏上述矩阵吸收的结合律</strong>！</p>
+<p>为了解决这个难题，MLA 提出了<strong>解耦 RoPE 策略</strong>：</p>
+<ol>
+  <li><strong>语义内容向量（无位置编码）</strong>：走低秩联合压缩 $\mathbf{c}_t^{KV}$，完全享受矩阵吸收与极致显存压缩；</li>
+  <li><strong>位置编码向量（解耦外挂）</strong>：为每个头单独分配一个极小维度的专属 RoPE 向量（例如 $d_R = 64$ 维）：</li>
+</ol>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$K_t^R = \mathcal{R}_t \left( W^{KR} h_t \right)$$</div>
+<ol>
+  <li><strong>最终打分</strong>：内容打分与位置打分直接相加：</li>
+</ol>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\text{Score}_{i, t} = \frac{\tilde{Q}_i (\mathbf{c}_t^{KV})^\top + Q_i^R (K_t^R)^\top}{\sqrt{d_{\text{head}} + d_R}}$$</div>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h2 id="四四大注意力机制横向对比与选型全景">四、四大注意力机制横向对比与选型全景</h2>
+<table>
+  <tr><th>机制属性</th><th>MHA (标准多头)</th><th>MQA (多查询)</th><th>GQA (分组查询)</th><th>MLA (多头潜在)</th></tr>
+  <tr><td><strong>Q : KV 比例</strong></td><td>$1 : 1$ 绑定</td><td>$N : 1$ 极限共享</td><td>$G : 1$（如 $8 : 1$）分组</td><td>全头表达保留，低秩隐空间共享</td></tr>
+  <tr><td><strong>单 Token KV 缓存大小</strong></td><td>$2 \cdot n_h \cdot d_h$（基线 <strong>100%</strong>）</td><td>$2 \cdot d_h$（~<strong>3%~5%</strong>）</td><td>$2 \cdot \frac{n_h}{G} \cdot d_h$（~<strong>12.5%</strong>）</td><td>$d_c + d_R$（~<strong>9% 以下</strong>）</td></tr>
+  <tr><td><strong>KV Cache 存储内容</strong></td><td>完整多头 $K, V$ 矩阵</td><td>仅 1 组单头 $K, V$</td><td>$G$ 组独立的 $K, V$</td><td>仅存压缩隐向量 $\mathbf{c}^{KV}$ + 解耦 $K^R$</td></tr>
+  <tr><td><strong>表达能力 / 建模精度</strong></td><td>完整无损（理论上限）</td><td>明显受损（易欠拟合）</td><td>几乎无损（基准测试打平）</td><td>媲美乃至超越标准 MHA</td></tr>
+  <tr><td><strong>矩阵吸收可行性</strong></td><td>否（直接展开）</td><td>否</td><td>否</td><td><strong>是（推理期权重完美吸收）</strong></td></tr>
+  <tr><td><strong>典型代表模型</strong></td><td>经典 Transformer, GPT-3</td><td>PaLM, Falcon</td><td>LLaMA-2/3, Qwen-2.5</td><td>DeepSeek-V2, V3, R1</td></tr>
+  <tr><td><strong>工业定位与评价</strong></td><td>训练友好但推理代价过高</td><td>极端节省显存但损伤能力</td><td>当下主流大模型通用工业标准</td><td>超大参数长文本推理的代际革新</td></tr>
+</table>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h2 id="五在推理系统vLLM--PagedAttention中的协同考量">五、在推理系统（vLLM / PagedAttention）中的协同考量</h2>
+<p>在大模型 Serving 系统（如 vLLM、SGLang、1Cat-vLLM）中，不同注意力机制对底层物理显存管理和算子调度提出了截然不同的要求：</p>
+<ol>
+  <li><strong>PagedAttention 的 Block 组织</strong>：</li>
+</ol>
+<ul>
+  <li>在 <strong>MHA / GQA</strong> 中，物理块（Physical Page Block，如每块 16 个 Token）存储的是展开后的 <code>[block_size, num_kv_heads, head_dim]</code> 张量；</li>
+  <li>在 <strong>MLA</strong> 中，物理块存储的张量形状直接转变为 <code>[block_size, latent_dim + rope_dim]</code>，单块内存体积大幅缩小，使得单卡可以容纳数十倍的并发上下文 Block。</li>
+</ul>
+<ol>
+  <li><strong>算子 GEMM 优化方向</strong>：</li>
+</ol>
+<ul>
+  <li><strong>GQA 场景</strong>：核心优化在于打满小矩阵计算密度（即 1Cat-vLLM 实现的 <strong>GQA-packed Wide GEMM</strong>，将 6~8 个 Q 头在行维度拼接成大矩阵，只扫一遍 KV Cache）；</li>
+  <li><strong>MLA 场景</strong>：核心优化在于<strong>投影视角的算子重排</strong>，在 Prefill 阶段进行低秩投影，在 Decode 阶段将 $W^{UK}$ 与动态 Query 预先融合为宽 GEMM 运算。</li>
+</ul>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<p><em>本文档为 1Cat-vLLM 学习笔记的独立模块，归属于「知识点汇总」栏目，由构建脚本自动渲染编译。</em></p>
+                </article>
+
+                <div class="source-meta">
+                    <span>Markdown 源文件：<code>markdown/knowledge_attention_mechanisms.md</code></span>
+                    <span>修改 Markdown 后运行 <code>build_notes.bat</code> 即可同步更新</span>
+                </div>
+
+                <footer>
+                    <p>1Cat-vLLM 源码精读与算子开发指南 · <a href="../index.html" style="color: inherit;">返回笔记首页</a></p>
+                </footer>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const btn = document.getElementById('themeBtn');
+            if (current === 'twilight') {
+                html.setAttribute('data-theme', 'parchment');
+                btn.innerHTML = '切换暮色';
+                localStorage.setItem('doc-theme', 'parchment');
+            } else {
+                html.setAttribute('data-theme', 'twilight');
+                btn.innerHTML = '切换米纸';
+                localStorage.setItem('doc-theme', 'twilight');
+            }
+        }
+
+        // 侧边栏收起/展开
+        function toggleDesktopToc() {
+            const isCollapsed = document.body.classList.toggle('toc-collapsed');
+            localStorage.setItem('toc-collapsed', isCollapsed ? 'true' : 'false');
+        }
+
+        // 移动端侧边栏切换
+        function toggleMobileToc() {
+            const sidebar = document.getElementById('sidebarToc');
+            const isOpen = sidebar.classList.toggle('open');
+            document.body.classList.toggle('toc-drawer-open', isOpen);
+        }
+
+        // 点击大纲链接时（在窄屏/抽屉模式下）自动收起抽屉
+        document.addEventListener('click', function(e) {
+            const link = e.target.closest('.toc-link');
+            if (link && window.innerWidth <= 1120) {
+                const sidebar = document.getElementById('sidebarToc');
+                if (sidebar) sidebar.classList.remove('open');
+                document.body.classList.remove('toc-drawer-open');
+            }
+        });
+
+        // 滚动监听与大纲高亮 (Scroll-Spy)
+        function initScrollSpy() {
+            const links = Array.from(document.querySelectorAll('.toc-link'));
+            if (!links.length) return;
+
+            const targets = links.map(link => {
+                const href = link.getAttribute('href');
+                if (!href || !href.startsWith('#')) return null;
+                const id = decodeURIComponent(href.slice(1));
+                return {
+                    link: link,
+                    element: document.getElementById(id)
+                };
+            }).filter(item => item && item.element !== null);
+
+            if (!targets.length) return;
+
+            function onScroll() {
+                const scrollPos = window.scrollY + 100;
+                let currentItem = targets[0];
+                for (let i = 0; i < targets.length; i++) {
+                    if (targets[i].element.offsetTop <= scrollPos) {
+                        currentItem = targets[i];
+                    } else {
+                        break;
+                    }
+                }
+                targets.forEach(item => {
+                    if (item === currentItem) {
+                        if (!item.link.classList.contains('active')) {
+                            item.link.classList.add('active');
+                            item.link.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+                        }
+                    } else {
+                        item.link.classList.remove('active');
+                    }
+                });
+            }
+
+            window.addEventListener('scroll', onScroll, { passive: true });
+            onScroll();
+        }
+
+        // 代码一键复制
+        function copyCode(btn) {
+            const block = btn.closest('.code-block');
+            const code = block ? block.querySelector('pre code') : null;
+            if (!code) return;
+            const text = code.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const origHtml = btn.innerHTML;
+                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> <span>已复制!</span>';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.innerHTML = origHtml;
+                    btn.classList.remove('copied');
+                }, 2000);
+            }).catch(() => {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                btn.innerHTML = '<span>已复制!</span>';
+                setTimeout(() => { btn.innerHTML = '<span>复制</span>'; }, 2000);
+            });
+        }
+
+        // 初始化代码语法高亮
+        function initHighlight() {
+            if (window.hljs) {
+                try {
+                    hljs.registerAliases(['cuda', 'cu', 'cuh'], { languageName: 'cpp' });
+                } catch(e) {}
+                document.querySelectorAll('pre code').forEach((el) => {
+                    hljs.highlightElement(el);
+                });
+            }
+        }
+
+        (function() {
+            const saved = localStorage.getItem('doc-theme');
+            if (saved) {
+                document.documentElement.setAttribute('data-theme', saved);
+                const btn = document.getElementById('themeBtn');
+                if (btn) {
+                    btn.innerHTML = saved === 'twilight' ? '切换米纸' : '切换暮色';
+                }
+            }
+
+            const collapsed = localStorage.getItem('toc-collapsed');
+            if (collapsed === 'true') {
+                document.body.classList.add('toc-collapsed');
+            }
+
+            initScrollSpy();
+            initHighlight();
+        })();
+    </script>
+</body>
+</html>

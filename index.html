@@ -2,7 +2,7 @@
 <html lang="zh-CN" data-theme="parchment">
 <head>
     <meta charset="UTF-8">
-    <title>1Cat-vLLM 学习笔记索引目录</title>
+    <title>1Cat-vLLM 学习笔记与知识库索引</title>
     <style>
         :root[data-theme="parchment"] {
             --bg-color: #f7f4ec;
@@ -31,28 +31,53 @@
             line-height: 1.8;
             padding: 50px 24px;
         }
-        .container { max-width: 800px; margin: 0 auto; }
+        .container { max-width: 860px; margin: 0 auto; }
         code { background: var(--code-bg); padding: 2px 6px; border-radius: 4px; font-size: 0.88em; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1 style="margin-bottom: 8px;">1Cat-vLLM 源码精读与算子开发指南</h1>
-        <p style="color: var(--text-muted); margin-bottom: 30px;">
-            目录管理体系：修改 <code>learn_notes/markdown/*.md</code> 源码后，运行 <code>build_notes.bat</code> 即可全自动重新编译。
+        <h1 style="margin-bottom: 8px; font-size: 2rem;">1Cat-vLLM 源码精读与知识库导航</h1>
+        <p style="color: var(--text-muted); margin-bottom: 35px;">
+            笔记体系已划分为「核心系统与硬件架构实战」与「知识点汇总」两大独立栏目。修改 <code>markdown/*.md</code> 后运行 <code>build_notes.py</code> 即可重新编译生成。
         </p>
-        <ul style="list-style: none; padding: 0;">
-            
-        <li style="margin-bottom: 14px; padding: 12px 16px; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 8px;">
-            <a href="html/01_vllm_arch_and_sm70_hardware.html" style="font-size: 1.15rem; font-weight: 600; color: var(--accent-primary); text-decoration: none;">
-                01 - vLLM 架构全景与 Volta SM70 硬件底座
-            </a>
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;">
-                源文件：<code>markdown/01_vllm_arch_and_sm70_hardware.md</code> · 生成目标：<code>html/01_vllm_arch_and_sm70_hardware.html</code>
-            </div>
-        </li>
         
-        </ul>
+        <section style="margin-bottom: 36px;">
+            <h2 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 16px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; color: var(--accent-primary);">
+                ⚡ 核心系统与硬件架构实战
+            </h2>
+            <ul style="list-style: none; padding: 0; margin: 0;">
+                
+            <li style="margin-bottom: 14px; padding: 14px 18px; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 8px; transition: border-color 0.2s ease;">
+                <a href="html/01_vllm_arch_and_sm70_hardware.html" style="font-size: 1.15rem; font-weight: 600; color: var(--accent-primary); text-decoration: none;">
+                    01 - vLLM 架构全景与 Volta SM70 硬件底座
+                </a>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;">
+                    源文件：<code>markdown/01_vllm_arch_and_sm70_hardware.md</code> · 生成目标：<code>html/01_vllm_arch_and_sm70_hardware.html</code>
+                </div>
+            </li>
+            
+            </ul>
+        </section>
+        
+        <section style="margin-bottom: 36px;">
+            <h2 style="font-size: 1.35rem; font-weight: 700; margin-bottom: 16px; border-bottom: 2px solid var(--border-color); padding-bottom: 8px; color: var(--accent-primary);">
+                💡 知识点汇总
+            </h2>
+            <ul style="list-style: none; padding: 0; margin: 0;">
+                
+            <li style="margin-bottom: 14px; padding: 14px 18px; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 8px; transition: border-color 0.2s ease;">
+                <a href="html/knowledge_attention_mechanisms.html" style="font-size: 1.15rem; font-weight: 600; color: var(--accent-primary); text-decoration: none;">
+                    知识点汇总：注意力机制深度全解（从 MHA、MQA、GQA 到 MLA 与 KV Cache 演进）
+                </a>
+                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 6px;">
+                    源文件：<code>markdown/knowledge_attention_mechanisms.md</code> · 生成目标：<code>html/knowledge_attention_mechanisms.html</code>
+                </div>
+            </li>
+            
+            </ul>
+        </section>
+        
     </div>
 </body>
 </html>

@@ -4,43 +4,47 @@
 
 ---
 
-## 导读与学习目标
+## 导读与核心目标
 
-本讲作为全系列的基础篇，旨在建立从大模型高层系统调度（vLLM）到底层 GPU 物理硬件（Tesla V100 / SM70）的完整链路认知：
+写高性能 GPU 算子，光看 Python 层的调度代码或者光背硬件参数都没用，必须把整条链路打通：从上层的显存分页（vLLM 怎么把上下文切成离散 Page），到底层硬件的物理限制（老架构 V100 怎么抠显存带宽和寄存器），再到数学算法的演进（FlashAttention 为什么能把显存压到 $O(N)$）。
 
-1. **计算与访存边界**：厘清大模型推理两阶段的硬件瓶颈差异（Prefill 算力受限 vs Decode 访存受限）。
-2. **系统解构**：掌握 vLLM 的 PagedAttention 显存分页机制，以及张量元数据如何进入 C++/CUDA 算子层。
-3. **硬件架构限制**：剖析 Volta 架构的底层特征（缺少现代指令集、寄存器与共享内存容量紧张）。
-4. **数学基础**：掌握 FlashAttention 原理与 Online Softmax 的分块递推公式。
+本讲重点搞清楚这 4 件事：
+1. **瓶颈定性**：彻底弄明白 Prefill 为什么卡算力、Decode 为什么卡带宽。
+2. **分页寻址**：搞清楚 vLLM 的 PagedAttention 怎么从两级跳表算出真正的显存物理地址。
+3. **老卡枷锁**：摸清 Volta (SM70) 的硬件短板（没异步拷贝、寄存器和共享内存极其吃紧）。
+4. **数学底座**：吃透 FlashAttention 与 Online Softmax 的分块递推推导，以及工程实现里的约分细节。
 
 ---
 
-## 一、大模型推理的两大阶段与性能瓶颈
+## 一、大模型推理的两大阶段：到底卡在哪里？
 
-在编写任何 GPU 算子前，需要区分大模型运行的两个阶段：
+写算子或调优性能前，第一件事是定性：当前算子到底卡在计算（Compute-Bound），还是卡在显存带宽（Memory-Bound）。大模型推理分为两个截然不同的阶段：
 
-### 1. Prefill（首字预填充 / 提示词阶段）
-* **计算特征**：输入整个 Prompt（例如 2048 个 token），所有 Token 并行计算 Q, K, V。
+### 1. Prefill（首字预填充 / Prompt 阶段）
+* **计算特点**：把用户输入的完整 Prompt（比如 2048 个 token）一口气喂给模型，所有 Token 并行算 Q, K, V。
 * **瓶颈类型**：**Compute-Bound（算力受限）**。
-  - GEMM 矩阵尺寸大（如 $M=2048, K=4096, N=4096$）；
-  - 能够打满 GPU 的 Tensor Core 计算单元。
+  - 矩阵乘规模很大（典型如 $M=2048, K=4096, N=4096$）；
+  - 能充分喂饱 GPU 的 Tensor Core 计算单元，这时候主要看峰值 TFLOP/s。
 
 ### 2. Decode（自回归解码 / 逐字生成阶段）
-* **计算特征**：每次根据上一个 token 生成下一个 token（即 $M=1$）。为了计算当前单个 Token 与历史所有上下文的注意力关联，必须从显存中完整读取历史所有已生成 Token 的 Key 和 Value（**KV Cache**）。
-* **瓶颈类型**：**Memory-Bound（访存带宽受限）**。
-  - 浮点计算量较小，但显存数据搬运量大。
+* **计算特点**：逐字吐词，每次输入只有一个 token（即 $M=1$）。但为了计算这个新 token 与前面所有历史上下文的注意力，必须把历史所有 token 的 Key 和 Value（**KV Cache**）从显存里一字不差地全部搬出来。
+* **瓶颈类型**：**Memory-Bound（显存带宽受限）**。
+  - 浮点计算量其实很小，但显存数据搬运量极大。
 
-> [!NOTE] 算力访存比（Arithmetic Intensity）分析
+> [!NOTE] 算力访存比（Arithmetic Intensity）算笔明白账
 >
 > $$\text{Arithmetic Intensity} = \frac{\text{计算浮点数 (FLOPs)}}{\text{显存搬运字节数 (Bytes)}}$$
 >
-> 在单请求 Decode 阶段，算力访存比极低（通常仅 $1 \sim 2 \text{ FLOPs/Byte}$）。
-> **Tesla V100** 的 FP16 Tensor Core 理论算力为 **125 TFLOP/s**，HBM2 显存带宽为 **900 GB/s**。
-> 计算单元饱和所需的临界算力访存比为：
+> 单请求在 Decode 阶段，算力访存比极低（通常只有 $1 \sim 2 \text{ FLOPs/Byte}$）。
+> 我们以 **Tesla V100** 为例：
+> - FP16 Tensor Core 理论算力：**125 TFLOP/s**
+> - HBM2 显存带宽：**900 GB/s**
+> 
+> 要让计算单元刚好饱和，系统需要的临界算力访存比为：
 >
 > $$\frac{125 \times 10^{12} \text{ FLOP/s}}{900 \times 10^9 \text{ B/s}} \approx 138.8 \text{ FLOPs/Byte}$$
 >
-> **结论**：单请求 Decode 阶段大部分时间 GPU 计算单元处于等待数据状态，显存带宽利用率直接决定了系统的实际吞吐。
+> **现实很残酷**：138.8 对比 1~2，意味着单请求 Decode 时，GPU 的计算单元 98% 以上的时间都在干等数据从显存搬过来。这时候谁能把显存带宽利用率榨干，谁的系统吞吐就高。
 
 ---
 
@@ -101,184 +105,180 @@ const int page_offset   = token_idx % page_size;
 const half* k_ptr = kv_cache + physical_page * page_stride + page_offset * head_dim;
 ```
 
-> [!WARNING] 访存合并要求
-> 如果每个 CUDA 线程各自独立计算非对齐的地址，会导致严重的非合并访存（Uncoalesced Access）。因此在 Kernel 设计中，需要通过线程协同，将一个物理块内的数据通过 **128-bit 向量化读写（`float4` / `uint4`）** 批量搬运至 Shared Memory。
+> [!WARNING] 访存合并的底层硬要求
+> 很多初学者容易在这里写出“每个线程算一个 Token，各自去读非对齐地址”的代码，这会直接引发灾难性的非合并访存（Uncoalesced Access），显存带宽瞬间跌到不足 10%。
+> **正确解法**：算子要解耦“搬运分工”与“计算分工”。外层循环锁定当前这一个物理块，块内 32 个线程全部化身“搬砖工”，排好队用 **128-bit 向量化读写（`float4` / `uint4`，单条指令搬 16 字节）** 协同把一整块连续内存一口气搬到 Shared Memory，随后各线程再在片上自由取用计算。
 
 ---
 
-## 三、Volta 架构（SM70 / Tesla V100）硬件特征
+## 三、老卡 Volta (SM70 / Tesla V100) 的硬件枷锁
+
+在现代 A100 / H100 上写算子有各种硬件指令兜底，但在 V100 这类老架构上写，到处都是坑。先对比一下代际差异：
 
 | 架构特性 | Tesla V100 (Volta / SM70) | A100 (Ampere / SM80) | H100 (Hopper / SM90) |
 | :--- | :--- | :--- | :--- |
 | **Tensor Core 指令** | `mma.sync.m8n8k4` (小粒度 HMMA) | `mma.sync.m16n8k16` (吞吐翻倍) | WGMMA / TMA 硬件单元支持 |
 | **低比特硬件支持** | **无原生 FP8 / 无原生 INT4** (仅 FP16/FP32) | 原生 INT8 / INT4 | 原生硬件 FP8 (E4M3 / E5M2) |
-| **显存到共享内存** | **必须经过通用寄存器中转** (消耗寄存器) | `cp.async` 硬件异步直拷 | TMA (Tensor Memory Accelerator) |
+| **显存到共享内存** | **必须经过通用寄存器中转** (消耗寄存器) | `cp.async` 硬件异步直拷 | TMA 硬件级异步张量加速 |
 | **Shared Memory 容量** | L1 与 Shared Memory 共享 128KB | 最高 164 KB，硬件异步屏障 | 最高 228 KB，集群间共享 (DSM) |
 
-### V100 算子开发的主要约束
+### 为什么在 V100 上写算子这么难受？
 
-1. **寄存器溢出（Register Spilling）**：
-   缺乏 `cp.async` 指令，显存到共享内存必须遵循 `Global Memory -> Register -> Shared Memory`。线程占用寄存器过多时，活跃 Warp 比例下降，难以掩盖访存延迟。
-2. **HMMA 指令发射开销**：
-   Volta Tensor Core 单次只计算 $8 \times 8 \times 4$ 矩阵。计算一个较大的 Block Tile 需要发射大量 HMMA 汇编指令，容易触及指令发射瓶颈。
-3. **缺少低比特计算指令**：
-   在 V100 上运行量化模型（如 NVFP4 / W4A16 / FP8）时，无法直接调用专用硬件指令。必须在 CUDA 软件层面通过**位运算在寄存器内解包为 FP16**，再交由 HMMA 执行。
+1. **没有异步直拷，寄存器容易溢出（Register Spilling）**：
+   A100 之后一条 `cp.async` 就能直接让硬件把数据从显存拷进共享内存，不走通用寄存器。而 V100 必须走 `Global Memory -> 通用寄存器 -> Shared Memory`。线程里的每个寄存器都价值连城，一旦寄存器用超了，数据就会溢出到极慢的 Local Memory，活跃 Warp 骤降，延迟根本掩盖不住。
+2. **HMMA 粒度太小，指令发射容易卡死前端**：
+   Volta Tensor Core 硬件单次只能算 $8 \times 8 \times 4$ 矩阵。想要算完一个常规大小的矩阵块（Tile），CUDA 编译器必须发射密密麻麻的大量汇编指令，往往还没跑满算力，先撞到了 SM 的指令发射瓶颈。
+3. **完全没有低比特硬件单元，全靠软件手搓解包**：
+   要在 V100 上跑 W4A16 或者 FP8 量化模型，硬件根本没有对应的乘法指令。必须在 CUDA 代码里先用位运算手写解包（Unpack），在寄存器里动态转成 FP16，再塞给 Tensor Core 跑。
 
 ---
 
 ## 四、Attention 计算演进：从朴素实现到 Online Softmax
 
-标准 Attention 公式：
+标准 Attention 公式大家都会背：
 $$\text{Attention}(Q, K, V) = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right) V$$
 
-### 1. 朴素实现的显存开销
-若依次执行 $S = QK^T \to P = \text{Softmax}(S) \to O = PV$：
-- 中间矩阵 $S \in \mathbb{R}^{N \times N}$ 和 $P \in \mathbb{R}^{N \times N}$ 必须完整写回显存再读出；
-- 显存占用与显存带宽往返都是 $O(N^2)$。在长上下文下容易导致显存溢出。
+### 1. 为什么朴素实现会吃爆显存？
+传统深度学习框架的算子是按层顺序执行的：
+$$S = QK^T \;\to\; P = \text{Softmax}(S) \;\to\; O = PV$$
+- 每一个中间矩阵 $S$ 和 $P$ 的尺寸都是 $N \times N$。
+- 这些矩阵必须老老实实写回显存（HBM），下一步再读出来。
+- 显存空间占用与访存带宽往返都是 $O(N^2)$。当 Prompt 长度达到 8k、32k 时，还没开始算，显存就已经被撑爆了（OOM）。
 
-### 2. FlashAttention 原理：Online Softmax
+### 2. FlashAttention 原理：Online Softmax 详细推导
 
-标准 Attention 公式：
-$$O = \text{Softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right) V = P V$$
+FlashAttention 的破局思路很纯粹：**绝不把中间结果写回显存，全部在片上算完**。
+但片上 Shared Memory 只有几十 KB，一次只能装下一小截 $K, V$。而为了数值安全防止溢出的 **Safe Softmax**，传统上需要看完全部数据：
+1. 第一遍扫全量：找到全局最大值 $m = \max_{1 \le i \le N} x_i$；
+2. 第二遍扫全量：求出归一化分母 $l = \sum_{i=1}^N e^{x_i - m}$；
+3. 第三遍算概率：$P_i = \frac{e^{x_i - m}}{l}$ 并与 $V$ 做加权乘加。
 
-为了防止指数爆炸（数值溢出），工程中必须使用 **Safe Softmax**。若序列长度为 $N$，传统 Safe Softmax 计算向量 $x \in \mathbb{R}^N$ 需顺序完成三遍遍历：
-1. **第 1 遍**：求全局最大值 $m = \max_{1 \le i \le N} x_i$；
-2. **第 2 遍**：求减去最大值后的指数和分母 $l = \sum_{i=1}^N e^{x_i - m}$；
-3. **第 3 遍**：计算每个元素的概率 $P_i = \frac{e^{x_i - m}}{l}$ 并与 $V$ 做加权求和。
-
-**痛点**：传统方法必须等**全部 $N$ 个元素都看完**后才能得到全局 $m$，这意味着不能边加载局部 $K, V$ 边计算最终结果，不得不将 $N \times N$ 的中间矩阵 $S$ 和 $P$ 频繁往返写入全局显存。
+**核心矛盾**：既然不能提前看完所有 Token，怎么在只看到眼前这小块数据时，就算出全局正确的结果？这就是 **Online Softmax** 的数学精髓。
 
 ---
 
 #### 核心推导：两块数据的 Softmax 增量拼接
 
-设整个序列被切分为两个数据块（Block 1 与 Block 2）：
+设序列被切分为两段（Block 1 代表已处理的历史累积，Block 2 代表刚载入的新块）：
 $$x = \left[ x^{(1)}, x^{(2)} \right], \quad x^{(1)} \in \mathbb{R}^{B_1}, \; x^{(2)} \in \mathbb{R}^{B_2}$$
 
-##### 步骤 1：局部统计量定义
-假设我们刚刚只加载了 Block 1，算出了局部最大值与局部指数和：
-$$m^{(1)} = \max_{i \in B_1} x_i^{(1)}, \quad l^{(1)} = \sum_{i \in B_1} e^{x_i^{(1)} - m^{(1)}}$$
-
-此时仅用 Block 1 计算的局部输出向量 $O^{(1)}$ 为：
-$$O^{(1)} = \sum_{i \in B_1} P_i^{(1)} V_i^{(1)} = \frac{\sum_{i \in B_1} e^{x_i^{(1)} - m^{(1)}} V_i^{(1)}}{l^{(1)}}$$
-为了便于后续分子合并，定义局部未归一化加权和分子为 $\tilde{O}^{(1)}$：
-$$\tilde{O}^{(1)} = \sum_{i \in B_1} e^{x_i^{(1)} - m^{(1)}} V_i^{(1)} = l^{(1)} \cdot O^{(1)}$$
-
-同理，当新加载 Block 2 时，它的局部统计量为：
-$$m^{(2)} = \max_{j \in B_2} x_j^{(2)}, \quad l^{(2)} = \sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}}, \quad \tilde{O}^{(2)} = \sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}} V_j^{(2)} = l^{(2)} \cdot O^{(2)}$$
+##### 步骤 1：两块各自的局部统计量（严格对称）
+* **Block 1（历史累加态）**：
+  * 局部最大值：$m^{(1)} = \max_{i \in B_1} x_i^{(1)}$
+  * 局部指数分母：$l^{(1)} = \sum_{i \in B_1} e^{x_i^{(1)} - m^{(1)}}$
+  * 局部归一化输出：$O^{(1)} = \sum_{i \in B_1} \frac{e^{x_i^{(1)} - m^{(1)}}}{l^{(1)}} V_i^{(1)}$
+  * 未归一化分子为：$\tilde{O}^{(1)} = l^{(1)} \cdot O^{(1)}$
+* **Block 2（新块数据）**：
+  * 局部最大值：$m^{(2)} = \max_{j \in B_2} x_j^{(2)}$
+  * 局部指数分母：$l^{(2)} = \sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}}$
+  * 局部归一化输出：$O^{(2)} = \sum_{j \in B_2} \frac{e^{x_j^{(2)} - m^{(2)}}}{l^{(2)}} V_j^{(2)}$
+  * 未归一化分子为：$\tilde{O}^{(2)} = l^{(2)} \cdot O^{(2)}$
 
 ##### 步骤 2：全局最大值更新
-两块合并后的全局最大值显然为两者较大者：
+合体之后的真实最大值显而易见：
 $$m^{\text{new}} = \max\left(m^{(1)}, m^{(2)}\right)$$
 
 ##### 步骤 3：归一化分母（指数和）的增量修正
-全局正确的归一化分母定义为以 $m^{\text{new}}$ 为基准的全部元素指数和：
+全局正确的总分母，是以 $m^{\text{new}}$ 为基准的全部指数和：
 $$l^{\text{new}} = \sum_{k \in B_1 \cup B_2} e^{x_k - m^{\text{new}}} = \sum_{i \in B_1} e^{x_i^{(1)} - m^{\text{new}}} + \sum_{j \in B_2} e^{x_j^{(2)} - m^{\text{new}}}$$
 
-利用指数恒等式 $e^{a - c} = e^{a - b} \cdot e^{b - c}$，将指数项拆分：
-$$\sum_{i \in B_1} e^{x_i^{(1)} - m^{\text{new}}} = \sum_{i \in B_1} \left( e^{x_i^{(1)} - m^{(1)}} \cdot e^{m^{(1)} - m^{\text{new}}} \right) = e^{m^{(1)} - m^{\text{new}}} \cdot \underbrace{\sum_{i \in B_1} e^{x_i^{(1)} - m^{(1)}}}_{l^{(1)}}$$
+拆分指数项 $x_i - m^{\text{new}} = (x_i - m^{(1)}) + (m^{(1)} - m^{\text{new}})$，提公因式：
+$$\sum_{i \in B_1} e^{x_i^{(1)} - m^{\text{new}}} = e^{m^{(1)} - m^{\text{new}}} \cdot \underbrace{\sum_{i \in B_1} e^{x_i^{(1)} - m^{(1)}}}_{l^{(1)}} = e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)}$$
 
-同理对 Block 2 处理：
-$$\sum_{j \in B_2} e^{x_j^{(2)} - m^{\text{new}}} = e^{m^{(2)} - m^{\text{new}}} \cdot \underbrace{\sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}}}_{l^{(2)}}$$
+同理，对 Block 2 提取缩放公因式：
+$$\sum_{j \in B_2} e^{x_j^{(2)} - m^{\text{new}}} = e^{m^{(2)} - m^{\text{new}}} \cdot \underbrace{\sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}}}_{l^{(2)}} = e^{m^{(2)} - m^{\text{new}}} \cdot l^{(2)}$$
 
-代回即可得到**分母递推公式**：
+代回即可得到**分母更新递推公式**：
 $$l^{\text{new}} = e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)} + e^{m^{(2)} - m^{\text{new}}} \cdot l^{(2)}$$
 
-> **数值稳定性注意**：由于 $m^{\text{new}} \ge m^{(1)}$ 且 $m^{\text{new}} \ge m^{(2)}$，缩放指数差值 $m^{(1)} - m^{\text{new}} \le 0$ 以及 $m^{(2)} - m^{\text{new}} \le 0$，因此系数 $e^{\Delta m} \in (0, 1]$，计算时**绝对不会发生上溢**。
+> **为什么数值绝对安全？**
+> 因为 $m^{\text{new}} \ge m^{(1)}$ 且 $m^{\text{new}} \ge m^{(2)}$，所以指数差值 $m^{(1)} - m^{\text{new}} \le 0$。衰减系数 $e^{\Delta m} \in (0, 1]$，只做衰减不做放大，**绝对不会发生浮点上溢**。
 
 ##### 步骤 4：注意力输出向量 $O$ 的在线递推
-最终全局加权输出定义为：
-$$O^{\text{new}} = \frac{\sum_{k \in B_1 \cup B_2} e^{x_k - m^{\text{new}}} V_k}{l^{\text{new}}}$$
+最终全局加权输出为两部分分子求和后再除以总分母：
+$$O^{\text{new}} = \frac{\sum_{i \in B_1} e^{x_i^{(1)} - m^{\text{new}}} V_i^{(1)} + \sum_{j \in B_2} e^{x_j^{(2)} - m^{\text{new}}} V_j^{(2)}}{l^{\text{new}}}$$
 
-展开分子（未归一化总分子 $\tilde{O}^{\text{new}}$）：
-$$\tilde{O}^{\text{new}} = \sum_{i \in B_1} e^{x_i^{(1)} - m^{\text{new}}} V_i^{(1)} + \sum_{j \in B_2} e^{x_j^{(2)} - m^{\text{new}}} V_j^{(2)}$$
+两块提取缩放系数的过程在数学上完全对称：
+* **Block 1 分子缩放**：$e^{m^{(1)} - m^{\text{new}}} \cdot \left( l^{(1)} \cdot O^{(1)} \right)$
+* **Block 2 分子缩放**：$e^{m^{(2)} - m^{\text{new}}} \cdot \left( l^{(2)} \cdot O^{(2)} \right)$
 
-两块提取缩放系数的过程在数学上是**完全对称**的：
-* **Block 1 分子缩放**：
-  $$\sum_{i \in B_1} e^{x_i^{(1)} - m^{\text{new}}} V_i^{(1)} = e^{m^{(1)} - m^{\text{new}}} \sum_{i \in B_1} e^{x_i^{(1)} - m^{(1)}} V_i^{(1)} = e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)} \cdot O^{(1)}$$
-* **Block 2 分子缩放**：
-  $$\sum_{j \in B_2} e^{x_j^{(2)} - m^{\text{new}}} V_j^{(2)} = e^{m^{(2)} - m^{\text{new}}} \sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}} V_j^{(2)} = e^{m^{(2)} - m^{\text{new}}} \cdot l^{(2)} \cdot O^{(2)}$$
-
-将分子代入归一化分母 $l^{\text{new}}$，得出**完全对称的输出增量递推公式**：
+代入分母，即得**完全对称的输出增量递推公式**：
 $$O^{\text{new}} = \frac{e^{m^{(1)} - m^{\text{new}}} \cdot l^{(1)} \cdot O^{(1)} \;+\; e^{m^{(2)} - m^{\text{new}}} \cdot l^{(2)} \cdot O^{(2)}}{l^{\text{new}}}$$
 
-亦可直观写为“**旧结果衰减更新 + 新结果加权补入**”的凸组合形式：
+直观地看，这就是**“旧结果衰减更新 + 新结果加权补入”**的凸组合：
 $$O^{\text{new}} = \left( \frac{l^{(1)} \cdot e^{m^{(1)} - m^{\text{new}}}}{l^{\text{new}}} \right) \cdot O^{(1)} \;+\; \left( \frac{l^{(2)} \cdot e^{m^{(2)} - m^{\text{new}}}}{l^{\text{new}}} \right) \cdot O^{(2)}$$
 
 ---
 
-#### 深入剖析：为什么工程上可以省去除法？（数学约分与硬件考量）
+#### 深入剖析：为什么工程代码里可以省去除法？
 
-在纯数学递推中，Block 2 贡献的项写作：
-$$\text{分子贡献项} = e^{m^{(2)} - m^{\text{new}}} \cdot \Big( l^{(2)} \cdot O^{(2)} \Big)$$
+如果你看底层 CUDA 源码，会发现一个“奇怪”的现象：公式里明明写着 $l^{(2)} \cdot O^{(2)}$，为什么真实代码里既看不到除以 $l^{(2)}$，也看不到乘以 $l^{(2)}$？
 
-很多读者会感到困惑：**既然写了 $O^{(2)}$，为什么在工程代码中既看不到除以 $l^{(2)}$，也看不到乘以 $l^{(2)}$？**
-
-##### 1. 数学上的直接约分抵消
-回顾两者的严格定义：
-* **未归一化的局部矩阵乘积**：定义 $\tilde{P}^{(2)} = \exp\left(Q (K^{(2)})^\top - m^{(2)}\right)$，其与 $V^{(2)}$ 的矩阵乘积即为分子的原始加权和：
-  $$\text{局部未归一化分子} = \tilde{P}^{(2)} V^{(2)} = \sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}} V_j^{(2)}$$
-* **局部归一化输出**：定义为分子除以分母 $l^{(2)}$：
+##### 1. 数学上的“直接约分”
+根据定义：
+* **未归一化的局部矩阵乘积**：定义 $\tilde{P}^{(2)} = \exp\left(Q (K^{(2)})^\top - m^{(2)}\right)$，其与 $V^{(2)}$ 的矩阵乘积就是原始分子：
+  $$\text{未归一化分子} = \tilde{P}^{(2)} V^{(2)} = \sum_{j \in B_2} e^{x_j^{(2)} - m^{(2)}} V_j^{(2)}$$
+* **局部归一化输出**：就是分子除以分母：
   $$O^{(2)} = \frac{\tilde{P}^{(2)} V^{(2)}}{l^{(2)}}$$
 
-若机械地将 $O^{(2)}$ 带入递推公式，展开后会发现：
+如果机械地代入公式：
 $$l^{(2)} \cdot O^{(2)} = l^{(2)} \cdot \left( \frac{\tilde{P}^{(2)} V^{(2)}}{l^{(2)}} \right) = \tilde{P}^{(2)} V^{(2)}$$
 
-**关键结论**：分母上的 $l^{(2)}$ 与外层的 $l^{(2)}$ 在数学上**直接完全抵消**！因此新块实际需要累加的分子项，纯粹就是：
+**看到了吗？分母上的 $l^{(2)}$ 和外层的 $l^{(2)}$ 在数学上直接被抵消掉了！**  
+因此，新块需要累加的分子项，纯粹就是：
 $$e^{m^{(2)} - m^{\text{new}}} \cdot \left( \tilde{P}^{(2)} V^{(2)} \right)$$
 
-##### 2. 硬件层面的关键收益（GPU Tensor Core vs 浮点除法）
-在 GPU 芯片底层硬件中，这一约分抵消带来了决定性的性能优势：
-
-* **Tensor Core 的极致吞吐**：NVIDIA GPU（如 Tesla V100）的 Tensor Core 专门针对半精度矩阵乘累加（MMA）做了硬件级加速，单指令即可吞吐大规模矩阵乘，能极速算完 $\tilde{P}^{(2)} V^{(2)}$；
-* **浮点除法（DIV）极其昂贵**：Tensor Core **原生不支持除法**！除法运算必须交给普通的通用算术单元（ALU/SFU）逐个标量串行计算，指令延迟长达数十个周期。如果每处理一个 Tile 都强行先做一次全量除法求出 $O^{(2)}$，会导致严重的计算单元流水线停顿（Stall）；
+##### 2. 硬件层面的关键收益（GPU 芯片特性）
+在纸面上约分只是一笔划掉的事，但在 GPU 芯片上，这一步价值千金：
+* **Tensor Core 只会做矩阵乘**：GPU 里的 Tensor Core 跑矩阵乘（MMA）极快，一枪发射就能算完 $\tilde{P}^{(2)} V^{(2)}$。
+* **浮点除法（DIV）在 GPU 上极慢**：Tensor Core **原生不支持除法**！除法必须打断硬件流水线，交给通用算术单元（ALU/SFU）按标量串行做，延迟高达数十周期。
 * **流水线对比**：
-  * **低效做法（机械算 $O^{(2)}$）**：Tensor Core 算完 $\tilde{P}^{(2)} V^{(2)} \to$ 打断流水线切换到通用 ALU 逐元素除以 $l^{(2)} \to$ 再乘回 $l^{(2)} \to$ 累加进寄存器；
-  * **优化做法（利用数学抵消）**：Tensor Core 算完 $\tilde{P}^{(2)} V^{(2)} \to$ 直接由 Tensor Core / FMA 乘以缩放因子累加进片上寄存器，**全程无多余除法指令**！
+  * **机械低效做法**：Tensor Core 算完 $\tilde{P}^{(2)} V^{(2)} \to$ 打断流水线做慢速除法算 $O^{(2)} \to$ 再乘回 $l^{(2)} \to$ 累加；
+  * **工程优化做法**：既然分子就是 $\tilde{P}^{(2)} V^{(2)}$，直接把 Tensor Core 的矩阵乘输出乘以缩放因子加进寄存器，**全程连一次多余除法都不用做**！
 
 ---
 
-#### 递推结论与硬件状态演化
+#### 硬件流水线与寄存器状态机
 
-在 CUDA Kernel 运行期间，每个线程/Warp 无需任何全局中间显存缓冲区，仅在**片上寄存器**中维持三个常数级状态变量：
-* 标量 $m \in \mathbb{R}$（当前累积最大值，初值设为 $-\infty$）；
-* 标量 $l \in \mathbb{R}$（当前累积指数和分母，初值设为 $0$）；
-* 向量 $O \in \mathbb{R}^d$（当前累积加权结果向量，初值设为 $\vec{0}$）。
+在 CUDA Kernel 运行期间，每个线程无需向显存申请任何缓冲区，全靠片上几个**通用寄存器**当作流式累加器：
+* 标量 $m \in \mathbb{R}$（当前累加最大值，初值设为 $-\infty$）；
+* 标量 $l \in \mathbb{R}$（当前累加指数和，初值设为 $0$）；
+* 向量 $O \in \mathbb{R}^d$（当前累加加权结果，初值设为 $\vec{0}$）。
 
 ```text
-片上通用寄存器 (维持当前状态):
+片上通用寄存器 (维持当前流式状态):
    ┌─────────┐   ┌─────────┐   ┌─────────────────┐
    │  m = -∞ │   │  l = 0  │   │     O = 0       │
    └─────────┘   └─────────┘   └─────────────────┘
         │             │                 │
-        ▼ 循环依次载入下一个 Physical Block 的 K, V
+        ▼ 外层循环：依次搬运下一个 Physical Block 的 K, V
    ┌─────────────────────────────────────────────┐
    │ 1. GEMM-1:  S_tile = Q * K_tile^T           │
    │ 2. Max/Sum: 计算该 Tile 的局部 m_tile, l_tile│
-   │ 3. Rescale: 按上述公式就地更新 m, l, O 寄存器 │
-   │ 4. GEMM-2:  O += P_tile * V_tile 累加       │
+   │ 3. Rescale: 按公式就地更新 m, l 寄存器       │
+   │ 4. GEMM-2:  O 寄存器累加 P_tile * V_tile    │
    └─────────────────────────────────────────────┘
         │
-   循环结束 ──> 寄存器中的 O 即为严格等于标准 Softmax 的最终数学结果！
+   循环结束 ──> 寄存器中的 O 即为严格等于标准 Attention 的最终结果！
 ```
 
-##### 核心工程收益
-1. **显存访问复杂度降低**：中间 $N \times N$ 的打分矩阵 $S$ 和概率矩阵 $P$ 彻底无需写入全局显存，显存访存复杂度从 $O(N^2)$ 降低到 $O(N)$；
-2. **算子融合（Fused Kernel）**：GEMM-1 ($QK^T$)、Softmax 和 GEMM-2 ($PV$) 在单次 Kernel 执行内流水线完成。
+**两大核心收益**：
+1. **显存访问复杂度直降**：中间 $N \times N$ 的打分矩阵 $S$ 和概率矩阵 $P$ 彻底不在显存落盘，访存复杂度从 $O(N^2)$ 压到 $O(N)$；
+2. **片上算子完全融合（Fused Kernel）**：GEMM-1 ($QK^T$)、Softmax 和 GEMM-2 ($PV$) 在单次 Kernel 执行内流水线跑完。
 
 ---
 
-## 五、1Cat-vLLM 在 V100 上的优化方向（PR #286）
+## 五、1Cat-vLLM 是怎么在 V100 上榨出 60 TFLOP/s 的？（PR #286）
 
-针对早期实现在 V100 上吞吐偏低的问题（约 17.92 TFLOP/s），1Cat-vLLM 在 **PR #286** 中引入了两项核心改进：
-- **Split-D**：将较大的 Head Dimension 切分成适合 Volta 共享内存与寄存器容量的小 Tile；
-- **GQA-packed Wide QK/PV GEMM**：将 6 个共享同一组 KV 的 Query Heads 打包成一个更宽的 GEMM，降低指令发射开销并提高 Tensor Core 计算密度，将实测吞吐提升至 **≈60.8 TFLOP/s**。
+针对早期实现在 V100 上吞吐偏低的问题（当时只有 17.92 TFLOP/s，远没喂饱 125 TFLOP/s 的硬件能力），1Cat-vLLM 在 **PR #286** 中引入了两项核心优化：
+- **Split-D**：较大的 Head Dimension 容易撑爆 Volta 的 Shared Memory 与寄存器，通过将其切分成适合 SM70 容量的小 Tile 流水线推进；
+- **GQA-packed Wide QK/PV GEMM**：GQA 结构下多个 Query Head 共享同一组 KV。早期实现分开跑产生了大量重复读 KV 开销。优化后将 6 个 Q Head 打包成一个更宽的 GEMM 一起算，大幅降低了指令发射频率并抬高了 Tensor Core 计算密度，最终将实测吞吐提升到了 **≈60.8 TFLOP/s**（提升超过 3 倍）。
 
 ---
 
 ## 研讨记录与思考题
 
-- [ ] **思考题 1**：在 GQA 中，多个 Q Head 共享同一个 KV Head。如果每个 Q 分别启动一个 Kernel，会产生哪些重复访存？
+- [ ] **思考题 1**：在 GQA 中，多个 Q Head 共享同一个 KV Head。如果每个 Q 分别启动一个 Kernel，会产生哪些重复访存？打包成宽 GEMM 为什么能提高算力利用率？
 - [ ] **思考题 2**：在计算 $QK^T$ 时，$K$ 原本按行存储，转置后按列读取。Shared Memory 的 32 个 Bank 会产生何种冲突？工业界通常采用什么排布方式（Padding 或 Swizzle）解决？
 
 ---

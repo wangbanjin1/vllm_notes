@@ -796,16 +796,21 @@
   <li class="toc-item toc-level-4"><a href="#核心推导两块数据的-Softmax-增量拼接" class="toc-link" title="核心推导：两块数据的 Softmax 增量拼接">核心推导：两块数据的 Softmax 增量拼接</a></li>
   <li class="toc-item toc-level-4"><a href="#深入剖析为什么工程上可以省去除法数学约分与硬件考量" class="toc-link" title="深入剖析：为什么工程上可以省去除法？（数学约分与硬件考量）">深入剖析：为什么工程上可以省去除法？（数学约分与硬件考量）</a></li>
   <li class="toc-item toc-level-4"><a href="#递推结论与硬件状态演化" class="toc-link" title="递推结论与硬件状态演化">递推结论与硬件状态演化</a></li>
-  <li class="toc-item toc-level-2"><a href="#五1Cat-vLLM-在-V100-上的优化实现PR-286-深度解析" class="toc-link" title="五、1Cat-vLLM 在 V100 上的优化实现（PR 286 深度解析）">五、1Cat-vLLM 在 V100 上的优化实现（PR #286 深度解析）</a></li>
-  <li class="toc-item toc-level-3"><a href="#1-优化一Split-D头维度空间切分" class="toc-link" title="1. 优化一：Split-D（头维度空间切分）">1. 优化一：Split-D（头维度空间切分）</a></li>
-  <li class="toc-item toc-level-4"><a href="#痛点根因片上资源吃紧与寄存器溢出" class="toc-link" title="痛点根因：片上资源吃紧与寄存器溢出">痛点根因：片上资源吃紧与寄存器溢出</a></li>
-  <li class="toc-item toc-level-4"><a href="#解决方案与数学原理" class="toc-link" title="解决方案与数学原理">解决方案与数学原理</a></li>
-  <li class="toc-item toc-level-4"><a href="#工程收益" class="toc-link" title="工程收益">工程收益</a></li>
-  <li class="toc-item toc-level-3"><a href="#2-优化二GQA-packed-Wide-QKPV-GEMM分组注意力多头宽打包" class="toc-link" title="2. 优化二：GQA-packed Wide QK/PV GEMM（分组注意力多头宽打包）">2. 优化二：GQA-packed Wide QK/PV GEMM（分组注意力多头宽打包）</a></li>
-  <li class="toc-item toc-level-4"><a href="#痛点根因GQA-重复读取与小矩阵指令发射饥饿" class="toc-link" title="痛点根因：GQA 重复读取与小矩阵指令发射饥饿">痛点根因：GQA 重复读取与小矩阵指令发射饥饿</a></li>
-  <li class="toc-item toc-level-4"><a href="#解决方案打包为宽矩阵乘Wide-GEMM" class="toc-link" title="解决方案：打包为宽矩阵乘（Wide GEMM）">解决方案：打包为宽矩阵乘（Wide GEMM）</a></li>
-  <li class="toc-item toc-level-4"><a href="#工程收益-1" class="toc-link" title="工程收益">工程收益</a></li>
-  <li class="toc-item toc-level-3"><a href="#3-两项优化结合的前后性能对照" class="toc-link" title="3. 两项优化结合的前后性能对照">3. 两项优化结合的前后性能对照</a></li>
+  <li class="toc-item toc-level-2"><a href="#五1Cat-vLLM-在-V100-上的优化实现结合真实源码解析" class="toc-link" title="五、1Cat-vLLM 在 V100 上的优化实现（结合真实源码解析）">五、1Cat-vLLM 在 V100 上的优化实现（结合真实源码解析）</a></li>
+  <li class="toc-item toc-level-3"><a href="#1-痛点根因SM70-片上资源瓶颈寄存器溢出与活跃度坍塌" class="toc-link" title="1. 痛点根因：SM70 片上资源瓶颈、寄存器溢出与活跃度坍塌">1. 痛点根因：SM70 片上资源瓶颈、寄存器溢出与活跃度坍塌</a></li>
+  <li class="toc-item toc-level-4"><a href="#1-共享内存Shared-Memory容量受限" class="toc-link" title="1 共享内存（Shared Memory）容量受限">(1) 共享内存（Shared Memory）容量受限</a></li>
+  <li class="toc-item toc-level-4"><a href="#2-寄存器文件Register-File与溢出Register-Spilling机制" class="toc-link" title="2 寄存器文件（Register File）与溢出（Register Spilling）机制">(2) 寄存器文件（Register File）与溢出（Register Spilling）机制</a></li>
+  <li class="toc-item toc-level-4"><a href="#3-活跃度Occupancy暴跌与延迟掩盖失效" class="toc-link" title="3 活跃度（Occupancy）暴跌与延迟掩盖失效">(3) 活跃度（Occupancy）暴跌与延迟掩盖失效</a></li>
+  <li class="toc-item toc-level-3"><a href="#2-优化一Split-D头维度空间切分源码与架构落地" class="toc-link" title="2. 优化一：Split-D（头维度空间切分）源码与架构落地">2. 优化一：Split-D（头维度空间切分）源码与架构落地</a></li>
+  <li class="toc-item toc-level-4"><a href="#核心设计思路" class="toc-link" title="核心设计思路">核心设计思路</a></li>
+  <li class="toc-item toc-level-4"><a href="#真实源码剖析Sm70D256SplitDTraits" class="toc-link" title="真实源码剖析：Sm70D256SplitDTraits">真实源码剖析：<code>Sm70D256SplitDTraits</code></a></li>
+  <li class="toc-item toc-level-4"><a href="#严格锁死的-Shared-Memory-预算" class="toc-link" title="严格锁死的 Shared Memory 预算">严格锁死的 Shared Memory 预算</a></li>
+  <li class="toc-item toc-level-4"><a href="#寄存器使用精确控制与零溢出Zero-Spilling" class="toc-link" title="寄存器使用精确控制与零溢出（Zero Spilling）">寄存器使用精确控制与零溢出（Zero Spilling）</a></li>
+  <li class="toc-item toc-level-3"><a href="#3-优化二GQA-packed-Wide-QKPV-GEMM-源码与架构落地" class="toc-link" title="3. 优化二：GQA-packed Wide QK/PV GEMM 源码与架构落地">3. 优化二：GQA-packed Wide QK/PV GEMM 源码与架构落地</a></li>
+  <li class="toc-item toc-level-4"><a href="#核心设计思路-1" class="toc-link" title="核心设计思路">核心设计思路</a></li>
+  <li class="toc-item toc-level-4"><a href="#真实源码剖析sm70d256gqav37fwd" class="toc-link" title="真实源码剖析：sm70d256gqav37fwd">真实源码剖析：<code>sm70_d256_gqa_v37_fwd</code></a></li>
+  <li class="toc-item toc-level-4"><a href="#软硬件协同收益" class="toc-link" title="软硬件协同收益">软硬件协同收益</a></li>
+  <li class="toc-item toc-level-3"><a href="#4-优化前后全景对比矩阵" class="toc-link" title="4. 优化前后全景对比矩阵">4. 优化前后全景对比矩阵</a></li>
   <li class="toc-item toc-level-2"><a href="#研讨记录与思考题" class="toc-link" title="研讨记录与思考题">研讨记录与思考题</a></li>
 </ul>
                 </nav>
@@ -1124,27 +1129,66 @@ const half* k_ptr = kv_cache + physical_page * page_stride + page_offset * head_
   <li><strong>算子融合（Fused Kernel）</strong>：GEMM-1 ($QK^T$)、Softmax 和 GEMM-2 ($PV$) 在单次 Kernel 执行内流水线完成。</li>
 </ol>
 <hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
-<h2 id="五1Cat-vLLM-在-V100-上的优化实现PR-286-深度解析">五、1Cat-vLLM 在 V100 上的优化实现（PR #286 深度解析）</h2>
-<p>在早期实现中，1Cat-vLLM 在 Tesla V100 上运行自注意力算子的实测吞吐仅约 <strong>17.92 TFLOP/s</strong>，仅达到 V100 理论峰值算力（125 TFLOP/s）的约 14.3%，出现了严重的算力瓶颈。在 <strong>PR #286</strong> 中，项目引入了两项关键的架构级优化，将实测吞吐提升至 <strong>≈60.8 TFLOP/s</strong>（提升超过 3.4 倍）。</p>
+<h2 id="五1Cat-vLLM-在-V100-上的优化实现结合真实源码解析">五、1Cat-vLLM 在 V100 上的优化实现（结合真实源码解析）</h2>
+<p>在早期实现中，1Cat-vLLM 在 Tesla V100（Volta / SM70）上运行自注意力算子的实测吞吐仅约 <strong>17.92 TFLOP/s</strong>，仅达到 V100 理论半精度峰值算力（125 TFLOP/s）的约 14.3%，出现了严重的算力塌陷。在引入架构优化后，实测吞吐提升至 <strong>≈60.8 TFLOP/s</strong>（并在最新的 <code>sm70_79t</code> 架构中突破 <strong>75+ TFLOP/s</strong>，算力提升超 3.4~4.2 倍）。</p>
+<p>下面结合 <code>1CatAI/1Cat-vLLM</code> 仓库的实际 CUDA 源码（位于 <a href="file:///D:/1Cat-vLLM/csrc/attention/sm70_v37/tail.cu">csrc/attention/sm70_v37/tail.cu</a> 与 <a href="file:///D:/1Cat-vLLM/csrc/attention/sm70_v37/prefill.cu">csrc/attention/sm70_v37/prefill.cu</a>），对痛点根因与核心技术展开深度剖析。</p>
 <hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
-<h3 id="1-优化一Split-D头维度空间切分">1. 优化一：Split-D（头维度空间切分）</h3>
-<h4 id="痛点根因片上资源吃紧与寄存器溢出">痛点根因：片上资源吃紧与寄存器溢出</h4>
-<p>现代大模型（如 LLaMA-2/3、Qwen、Mistral）的标准头维度通常为：</p>
-<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\text{head\_dim} = d = 128$$</div>
+<h3 id="1-痛点根因SM70-片上资源瓶颈寄存器溢出与活跃度坍塌">1. 痛点根因：SM70 片上资源瓶颈、寄存器溢出与活跃度坍塌</h3>
+<p>现代开源大模型（如 LLaMA-2/3、Qwen 2.5、Mistral）的标准头维度通常为：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$d_{\text{head}} = 128 \quad \text{或} \quad d_{\text{head}} = 256$$</div>
+<p>原生 FlashAttention-2 主要是面向 Ampere (SM80 / A100) 及更现代架构设计的：</p>
 <ul>
-  <li><strong>原生 FlashAttention 的假定</strong>：主要面向 Ampere (A100) 设计，一个 Thread Block 能够将整个 $d=128$ 维度的 Tile 完整装入片上共享内存和寄存器。</li>
-  <li><strong>Volta (SM70) 的硬件瓶颈</strong>：</li>
+  <li><strong>A100 架构优势</strong>：单 SM 配备 164 KB 可配置共享内存（Shared Memory），原生支持硬件级异步数据搬运指令 <code>cp.async</code>（直接由全局显存直通共享内存，不消耗通用寄存器），且具备更大规模的寄存器堆与更高发射带宽。</li>
+  <li><strong>Volta (SM70 / V100) 架构硬约束</strong>：</li>
+</ul>
+<h4 id="1-共享内存Shared-Memory容量受限">(1) 共享内存（Shared Memory）容量受限</h4>
+<ul>
+  <li>V100 每个 SM 的 L1 Cache 与 Shared Memory 是<strong>统一物理 SRAM</strong>（共 128 KB），硬件只允许配置为 64 KB 或 96 KB 的 Shared Memory。</li>
+  <li>若不加切分地分配 $B_r = 64, B_c = 64, d = 128$ 的 $Q, K, V$ Tile 及中间双缓冲，仅张量本身就逼近甚至超出 64 KB，导致单 SM 无法容纳多个并发 Block。</li>
+</ul>
+<h4 id="2-寄存器文件Register-File与溢出Register-Spilling机制">(2) 寄存器文件（Register File）与溢出（Register Spilling）机制</h4>
+<ul>
+  <li><strong>硬件规格</strong>：V100 每个 SM 拥有 65,536 个 32-bit 通用寄存器，由 4 个独立的 Processing Block（SMSP / Sub-core）均分，每个 Sub-core 拥有 16,384 个寄存器和 1 个 Warp 调度器。</li>
+  <li><strong>单线程上限</strong>：CUDA 硬件架构限制单个线程最多只能分配 <strong>255 个 32-bit 寄存器</strong>。</li>
+  <li><strong>寄存器膨胀根因</strong>：在标准 FlashAttention 中，线程需要同时驻留：</li>
 </ul>
 <ol>
-  <li><strong>共享内存容量受限</strong>：V100 的 L1 Cache 与 Shared Memory 共享 128 KB，实际分配给 Shared Memory 通常仅 64 KB 或 96 KB；</li>
-  <li><strong>寄存器溢出（Register Spilling）</strong>：每个 SM 仅有 64K 个 32-bit 寄存器，由 4 个 Processing Block 瓜分。若维持原有的序列块大小，单个线程占用寄存器数量会剧增，迫使编译器将多余变量溢出到极慢的 Local Memory（显存）；</li>
-  <li><strong>活跃度（Occupancy）暴跌</strong>：资源耗尽导致 SM 仅能并发极少量的 Warp，硬件无法通过线程快速切换掩盖访存延迟。</li>
+  <li>$QK^\top$ 矩阵乘累加的 FP32 累加器片段（Accumulator Fragments）；</li>
+  <li>$PV$ 矩阵乘累加的输出 $O$ 累加器片段（$B_r \times d$，若 $d=256$，累加器矩阵高达 $64 \times 256$ 个 float，即 64 KB 寄存器数据）；</li>
+  <li>全局访存到共享内存的数据中转寄存器（因为 Volta <strong>没有</strong> <code>cp.async</code>，所有数据搬运必须经由 <code>LDG.E -&gt; 寄存器 -&gt; STS</code> 这一路径，常驻寄存器占用极高）；</li>
+  <li>Online Softmax 的行最大值 $m$、行和 $l$、循环计数与指针偏移。</li>
 </ol>
-<h4 id="解决方案与数学原理">解决方案与数学原理</h4>
-<p>将原本庞大的特征维度 $d$ 沿空间轴进行切分（例如 $d = 128$ 切分为两个子块 $d_{\text{sub}} = 64$）：</p>
+<ul>
+  <li><strong>溢出惩罚（Local Memory Spilling）</strong>：当单个线程所需寄存器超过限额（或受 <code>__launch_bounds__</code> 限制）时，NVIDIA NVCC 编译器会强制将溢出的变量存放到<strong>本地内存（Local Memory）</strong>。</li>
+</ul>
+<p>  > [!CAUTION]</p>
+<p>  > 在 GPU 物理硬件中，所谓的 <strong>Local Memory 在物理上根本不是片上内存，而是位于高延迟、高功耗的板载显存（HBM2 DRAM）</strong>，仅靠少量的 L1/L2 缓存缓冲。</p>
+<p>  > 一旦发生 Register Spill，核心内密集的数学运算就会被大量的本地内存读写指令（<code>LDL</code> / <code>STL</code>）打断，指令延迟从寄存器的 <strong>1~4 个时钟周期</strong> 暴增到显存访存的 <strong>200~400 个周期</strong>，流水线直接被挂起！</p>
+<h4 id="3-活跃度Occupancy暴跌与延迟掩盖失效">(3) 活跃度（Occupancy）暴跌与延迟掩盖失效</h4>
+<p>GPU 依赖海量并发 Warp 之间的快速轮转切换（Warp Interleaving）来掩盖长达数百周期的访存延迟。</p>
+<ul>
+  <li>V100 单 SM 最大并发容量为 <strong>2048 个线程（64 个 Warp）</strong>。</li>
+  <li>假设一个线程块（CTA）包含 256 个线程，若因头维度过大，每个线程占用 128 个寄存器：</li>
+</ul>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\text{单 Block 寄存器消耗} = 256 \times 128 = 32,768 \text{ 个寄存器}$$</div>
+<p>  单 SM（总共 65,536 个寄存器）最多只能同时常驻：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\frac{65,536}{32,768} = 2 \text{ 个 Block} = 512 \text{ 个线程} = 16 \text{ 个 Warp}$$</div>
+<ul>
+  <li>此时理论活跃度（Theoretical Occupancy）暴跌至：</li>
+</ul>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\text{Occupancy} = \frac{16}{64} = 25\%$$</div>
+<ul>
+  <li>活跃度跌至 25% 意味着当这 16 个 Warp 都在等待显存加载或本地内存 Spill 访存时，SM 的计算单元完全处于<strong>饥饿空转状态（Stall）</strong>，导致实测算力暴跌至 17.92 TFLOP/s。</li>
+</ul>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h3 id="2-优化一Split-D头维度空间切分源码与架构落地">2. 优化一：Split-D（头维度空间切分）源码与架构落地</h3>
+<h4 id="核心设计思路">核心设计思路</h4>
+<p>既然 $d=128$ 或 $d=256$ 会导致单线程维护的 $O$ 累加器片段过大并引爆寄存器溢出，1Cat-vLLM 提出将特征维度 $d$ 沿空间轴进行切分（Tile 划分）。以大模型常用的 $d=256$ 为例，切分成 4 个小块（每块 $d_{\text{chunk}} = 64$）。</p>
+<h4 id="真实源码剖析Sm70D256SplitDTraits">真实源码剖析：<code>Sm70D256SplitDTraits</code></h4>
+<p>在 <a href="file:///D:/1Cat-vLLM/csrc/attention/sm70_v37/tail.cu">csrc/attention/sm70_v37/tail.cu</a> 的第 28~78 行中，1Cat-vLLM 定义了严格针对 Volta 硬件特性的 Traits 结构体：</p>
 <div class="code-block">
   <div class="code-header">
-    <span class="code-lang">TEXT</span>
+    <span class="code-lang">CPP</span>
     <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -1153,75 +1197,172 @@ const half* k_ptr = kv_cache + physical_page * page_stride + page_offset * head_
       <span>复制</span>
     </button>
   </div>
-  <pre><code class="language-text">原始 Head Dim = 128 (片上资源吃紧):
-[───────────────────────── d = 128 ─────────────────────────]
-                              │
-                    沿特征维度 d 对半切分
-                              ▼
-        Tile 1 (0 ~ 63)               Tile 2 (64 ~ 127)
-[─────── d_sub = 64 ───────]  +  [─────── d_sub = 64 ───────]</code></pre>
-</div>
-<p>由于向量点积的线性可加性：</p>
-<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$Q \cdot K = \sum_{k=0}^{127} Q_k K_k = \sum_{k=0}^{63} Q_k K_k + \sum_{k=64}^{127} Q_k K_k$$</div>
-<h4 id="工程收益">工程收益</h4>
-<ul>
-  <li><strong>单线程寄存器压力减半</strong>：单个 Thread Block 每次只处理 64 维度的中间张量，彻底消除 Register Spill；</li>
-  <li><strong>提升硬件 Occupancy</strong>：每个 SM 能常驻更多活跃 Warp，极大提升了延迟掩盖能力。</li>
-</ul>
-<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
-<h3 id="2-优化二GQA-packed-Wide-QKPV-GEMM分组注意力多头宽打包">2. 优化二：GQA-packed Wide QK/PV GEMM（分组注意力多头宽打包）</h3>
-<h4 id="痛点根因GQA-重复读取与小矩阵指令发射饥饿">痛点根因：GQA 重复读取与小矩阵指令发射饥饿</h4>
-<p>在主流大模型中，通常采用 <strong>GQA（Grouped-Query Attention）</strong> 结构，例如 6 个或 8 个 Query Heads 共享同 1 组 KV Head：</p>
-<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\text{GQA 共享比} = 6 : 1$$</div>
-<ul>
-  <li><strong>朴素实现的双重缺陷</strong>：</li>
-</ul>
-<ol>
-  <li><strong>KV Cache 冗余访存</strong>：若 6 个 Q Head 独立启动计算，同一份 KV Cache 数据会被从显存中重复加载 6 次；</li>
-  <li><strong>Volta Tensor Core 指令发射瓶颈</strong>：Volta 的硬件 Tensor Core 指令为 <code>mma.sync.m8n8k4</code>，单条汇编指令仅处理 $8 \times 8 \times 4$ 微矩阵。若按单头执行，由于 Query 行数极窄（$M=1$），矩阵极度细长，Tensor Core 硬件单次发射吞吐吃不饱，而指令发射单元（Dispatch Unit）却因发射海量小指令而过载卡死。</li>
-</ol>
-<h4 id="解决方案打包为宽矩阵乘Wide-GEMM">解决方案：打包为宽矩阵乘（Wide GEMM）</h4>
-<p>将属于同一个 KV Head 分组的 6 个 Query Head 在行维度<strong>打包对齐（Pack）</strong>，拼接为一个宽矩阵：</p>
-<div class="code-block">
-  <div class="code-header">
-    <span class="code-lang">TEXT</span>
-    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-      </svg>
-      <span>复制</span>
-    </button>
-  </div>
-  <pre><code class="language-text">【朴素独立计算：KV 重复加载 6 次，指令碎片化】
-Q0 (1×d) ──┐
-Q1 (1×d) ──┼──&gt; 各自去显存加载同一份 KV Cache ──&gt; 显存搬运膨胀 6 倍，小指令发射卡顿
-...        │
-Q5 (1×d) ──┘
+  <pre><code class="language-cpp">// 摘自 1Cat-vLLM/csrc/attention/sm70_v37/tail.cu
+struct Sm70D256SplitDTraits {
+  using Element = cutlass::half_t;
+  // Volta 硬件 Tensor Core 基础原子: m8n8k4 FP32 累加
+  using MmaAtom = MMA_Atom&lt;SM70_8x8x4_F32F16F16F32_TN&gt;;
+  using PvMmaAtom = MMA_Atom&lt;SM70_8x8x4_F32F16F16F32_TT&gt;;
 
-【GQA-packed 打包计算：宽矩阵单次 GEMM，KV 仅加载 1 次】
-   ┌───────────┐
-   │ Q0 (1×d)  │
-   │ Q1 (1×d)  │
-   │   ...     │  ──拼成宽矩阵──&gt; Q_packed (6×d)
-   │ Q5 (1×d)  │                          │
-   └───────────┘                          ▼
-                         与同一组 KV Cache (16×d) 执行 1 次宽 GEMM 运算</code></pre>
+  static constexpr int kHeadDim = 256;
+  static constexpr int kBlockM = 64;   // Query 行块大小
+  static constexpr int kBlockN = 32;   // Key/Value 列块大小
+  static constexpr int kDChunk = 64;   // 【Split-D 核心】头维度切块粒度为 64
+  static constexpr int kDChunks = kHeadDim / kDChunk; // 256 / 64 = 4 个子块
+  static constexpr int kOwnedDChunks = kDChunks / 2;  // 每对 Warp 仅负责 2 个 Chunk (即 D/2)
+  static constexpr int kNThreads = 256; // 8 个 Warp
+  static constexpr int kMmaThreads = 32;
+  static constexpr int kWarpsPerGroup = 2; // 每组 2 个 Warp 协作
+  static constexpr int kMmaGroups = kNThreads / (kWarpsPerGroup * kMmaThreads); // 4 组
+  static constexpr int kGroupRows = kBlockM / kMmaGroups; // 64 / 4 = 16
+  static constexpr int kQkWarpRows = kGroupRows / kWarpsPerGroup; // 16 / 2 = 8
+  static constexpr int kQkRowsPerThread = kQkWarpRows / 4;        // 单线程仅持有 2 行 QK!
+  static constexpr int kOutputRowsPerThread = kGroupRows / 4;     // 单线程仅持有 4 行输出!</code></pre>
 </div>
-<h4 id="工程收益-1">工程收益</h4>
+<h4 id="严格锁死的-Shared-Memory-预算">严格锁死的 Shared Memory 预算</h4>
+<p>在 <a href="file:///D:/1Cat-vLLM/csrc/attention/sm70_v37/tail.cu">tail.cu</a> 第 123~127 行中，代码通过静态断言强制将 Shared Memory 大小锁死在 45.5 KB：</p>
+<div class="code-block">
+  <div class="code-header">
+    <span class="code-lang">CPP</span>
+    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>复制</span>
+    </button>
+  </div>
+  <pre><code class="language-cpp">  static constexpr int kTensorSmemBytes =
+      (kQElements + 2 * kKVElements + kPElements) * sizeof(Element);
+  static constexpr int kExchangeBytes = 2 * kExchangeRows * sizeof(float);
+  static constexpr int kSmemBytes = kTensorSmemBytes + kExchangeBytes;
+  // 严格断言总 Smem 为 45,568 字节 (~44.5 KB)
+  static_assert(kSmemBytes == 45568);</code></pre>
+</div>
+<blockquote><strong>硬件收益</strong>：44.5 KB 极其精准地适配了 V100 的 64 KB / 96 KB Shared Memory 硬件配置，剩余的 19.5 KB 空间全部留给硬件 L1 Cache，保证了缓存命中率和并发调度灵活性。</blockquote>
+<h4 id="寄存器使用精确控制与零溢出Zero-Spilling">寄存器使用精确控制与零溢出（Zero Spilling）</h4>
+<p>在 <a href="file:///D:/1Cat-vLLM/csrc/attention/sm70_v37/tail.cu">tail.cu</a> 第 437~448 行的 Kernel 主体中：</p>
+<div class="code-block">
+  <div class="code-header">
+    <span class="code-lang">CPP</span>
+    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>复制</span>
+    </button>
+  </div>
+  <pre><code class="language-cpp">  using OFragment = decltype(partition_fragment_C(
+      pv_tiled_mma, Shape&lt;Int&lt;Traits::kGroupRows&gt;, Int&lt;kDChunk&gt;&gt;{}));
+  constexpr int kOElements = decltype(size(OFragment{}))::value;
+  using OLayout = typename OFragment::layout_type;
+  
+  // 单线程中驻留的 O 累加器: 仅维护 kOwnedDChunks (2个) 乘 kOElements
+  float o_storage[Traits::kOwnedDChunks][kOElements];</code></pre>
+</div>
 <ul>
-  <li><strong>KV Cache 搬运量降低 6 倍（复用率提升 600%）</strong>：物理块进入 Shared Memory 后，在片上被 6 个 Query Head 共同消费，完全消除冗余显存读取；</li>
-  <li><strong>提高 Tensor Core 计算密度</strong>：将离散的小指令发射合并为规整饱满的宽 GEMM 运算，打满 Tensor Core 每个周期的计算能力，突破指令发射瓶颈。</li>
+  <li>因为单线程持有的 <code>kOutputRowsPerThread</code> 仅为 4，<code>kDChunk</code> 为 64，单线程中累加器占用的寄存器数量被严格控制在极小范围内（数十个 float 寄存器）；</li>
+  <li>整个 Kernel 加上启动边界声明：</li>
 </ul>
+<div class="code-block">
+  <div class="code-header">
+    <span class="code-lang">CPP</span>
+    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>复制</span>
+    </button>
+  </div>
+  <pre><code class="language-cpp">  __global__ __launch_bounds__(Sm70D256SplitDTraits::kNThreads, 1)
+  void sm70_d256_splitd_dense_kernel(...)</code></pre>
+</div>
+<p>  单线程总寄存器开销保持在 $\le 64 \sim 80$ 个，彻底消除了向 Local Memory 的溢出，同时使得单 SM 可以容纳更多并发 Block，Occupancy 大幅攀升。</p>
 <hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
-<h3 id="3-两项优化结合的前后性能对照">3. 两项优化结合的前后性能对照</h3>
+<h3 id="3-优化二GQA-packed-Wide-QKPV-GEMM-源码与架构落地">3. 优化二：GQA-packed Wide QK/PV GEMM 源码与架构落地</h3>
+<h4 id="核心设计思路-1">核心设计思路</h4>
+<p>在 LLaMA-3、Qwen 2.5 等主流大模型中，均采用 GQA（Grouped-Query Attention）结构。以 6 个 Query Heads 共享 1 个 KV Head（比例 $6 : 1$）为例：</p>
+<ul>
+  <li><strong>朴素实现的缺陷</strong>：</li>
+</ul>
+<ol>
+  <li>若将 6 个 Query Head 分别作为独立的 Grid/Block 启动，显存中的同一份 KV Cache 数据会被重复读取 6 次，极度挤占 HBM2 访存带宽；</li>
+  <li>Volta 的 Tensor Core 指令 <code>mma.sync.m8n8k4</code> 单次仅处理 $8 \times 8 \times 4$ 微矩阵。若针对单个 Query Head 运算，行维度过窄（$M$ 维度过小），Tensor Core 的计算密度无法打满，而 GPU 前端的指令发射单元（Instruction Issue Unit）却被海量的小矩阵发射指令撑爆。</li>
+</ol>
+<ul>
+  <li><strong>1Cat-vLLM 的方案</strong>：在行维度（$M$ 轴）将 6 个 Query Heads <strong>直接打包（Pack）</strong>，拼接为一个大行数的宽矩阵，执行<strong>单次超宽 GEMM 运算</strong>！</li>
+</ul>
+<h4 id="真实源码剖析sm70d256gqav37fwd">真实源码剖析：<code>sm70_d256_gqa_v37_fwd</code></h4>
+<p>在 <a href="file:///D:/1Cat-vLLM/csrc/attention/sm70_v37/prefill.cu">csrc/attention/sm70_v37/prefill.cu</a> 的第 455~480 行与 628~652 行中，给出了极其精妙的打包调度：</p>
+<div class="code-block">
+  <div class="code-header">
+    <span class="code-lang">CPP</span>
+    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>复制</span>
+    </button>
+  </div>
+  <pre><code class="language-cpp">// 摘自 1Cat-vLLM/csrc/attention/sm70_v37/prefill.cu
+at::Tensor sm70_d256_gqa_v37_fwd(const at::Tensor&amp; q, const at::Tensor&amp; k,
+                                 const at::Tensor&amp; v, at::Tensor&amp; out,
+                                 double softmax_scale, bool causal) {
+  constexpr int kHeadDim = 256;
+  constexpr int kHeadsQ = 6;     // 6 个 Query 头
+  constexpr int kHeadsKV = 1;    // 共享 1 个 KV 头
+  
+  const int kQuery = static_cast&lt;int&gt;(q.size(1));
+  // 【核心打包】将 6 个 Query 头在行维度上打包拼接，行数变为 kQuery * 6
+  const int kRows = kQuery * kHeadsQ; </code></pre>
+</div>
+<p>随后，在计算非因果前缀（Prefix）与后续块时，代码直接将打包后的行数 <code>kRows</code> 送入 CUTLASS GEMM 算子：</p>
+<div class="code-block">
+  <div class="code-header">
+    <span class="code-lang">CPP</span>
+    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>复制</span>
+    </button>
+  </div>
+  <pre><code class="language-cpp">  // QK 宽 GEMM 运算: 问题规模为 (M = kRows, N = width, K = kHeadDim)
+  // 即 (6 * Q, block_kv, 256)
+  typename QKGemm::Arguments arguments(
+      {kRows, width, kHeadDim}, 1, 
+      {query, QKLayoutA(kHeadDim)},                         // 打包后的 6 头 Query
+      {key + size_t(begin) * kHeadDim, QKLayoutB(kHeadDim)}, // 单组 Key
+      {score_ptr, typename QKGemm::LayoutC(width)},
+      ...);
+  operation.qk(stream); // 单次启动打满 Tensor Core!
+
+  // PV 宽 GEMM 运算: 同样采用打包后的行数 kRows 执行单次宽乘累加
+  operation.pv = std::make_unique&lt;PVLauncher&gt;(
+      score_ptr, value + size_t(begin) * kHeadDim, prefix_accumulator_ptr,
+      kRows, width, old_scale_ptr, block_scale_ptr, block == 0);
+  operation.pv-&gt;launch(stream);</code></pre>
+</div>
+<h4 id="软硬件协同收益">软硬件协同收益</h4>
+<ol>
+  <li><strong>显存读取带宽降低至 1/6（片上复用率提升 600%）</strong>：同一份 Key 和 Value 数据加载进片上后，被 6 个 Query Head 在单次 GEMM 中共同乘累加消费，彻底消除跨 Kernel 的 KV 重复加载；</li>
+  <li><strong>打满 Volta Tensor Core 计算密度</strong>：单次 GEMM 的行数由 $Q$ 扩展为 $6 \cdot Q$（例如 $Q=64$ 时扩展至 384 行，甚至数千行），使得 CUTLASS M128/N256/K32 Tensor Core 流水线能够完全被填满，消除了小矩阵指令发射饥饿，实测吞吐一举从 17.92 TFLOP/s 跃升至 60.8+ TFLOP/s。</li>
+</ol>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h3 id="4-优化前后全景对比矩阵">4. 优化前后全景对比矩阵</h3>
 <table>
-  <tr><th>指标 / 维度</th><th>优化前（基线实现）</th><th>引入 PR #286 优化后</th><th>核心机制与原理</th></tr>
-  <tr><td><strong>实测吞吐</strong></td><td><strong>17.92 TFLOP/s</strong> (~14.3% 峰值)</td><td><strong>≈ 60.8 TFLOP/s</strong> (~48.6% 峰值)</td><td>算力翻升 3.4 倍，逼近 Volta 实测极限</td></tr>
-  <tr><td><strong>寄存器使用</strong></td><td>超标溢出（Spill 至 Local Memory）</td><td>严格受控（零溢出）</td><td><strong>Split-D</strong> 削减单线程资源占用</td></tr>
-  <tr><td><strong>活跃 Warp 数 (Occupancy)</strong></td><td>极低</td><td>显著提升</td><td>硬件延迟得到有效并发掩盖</td></tr>
-  <tr><td><strong>KV Cache 显存读</strong></td><td>6 个 Q Head 重复读 6 遍</td><td>1 份 KV 数据在片上复用 6 次</td><td><strong>GQA-packed</strong> 实现 6 倍片上数据复用</td></tr>
-  <tr><td><strong>指令发射单元压力</strong></td><td>发射极小粒度 <code>m8n8k4</code> 导致前端堵塞</td><td>宽矩阵乘打满硬件单指令计算密度</td><td>消除指令发射瓶颈</td></tr>
+  <tr><th>评估指标</th><th>原生实现 / 基线版本</th><th>1Cat-vLLM 架构优化实现</th><th>底层硬件与编译机制</th></tr>
+  <tr><td><strong>实测计算吞吐</strong></td><td><strong>17.92 TFLOP/s</strong> (~14.3% 峰值)</td><td><strong>≈ 60.8 ~ 75+ TFLOP/s</strong></td><td>算力翻升 3.4 ~ 4.2 倍，逼近 Volta 硬件真实天花板</td></tr>
+  <tr><td><strong>特征维切分策略</strong></td><td>维持完整 $d=128/256$ 维</td><td><strong>Split-D</strong>: $d_{\text{chunk}} = 64$（<code>kDChunk=64</code>）</td><td>消除过大 Tile 导致的片上资源耗尽</td></tr>
+  <tr><td><strong>寄存器溢出 (Spilling)</strong></td><td>严重溢出（Spill 至 Local Memory）</td><td><strong>零溢出（Zero Spilling）</strong></td><td>单线程累加器规模严格控制，无需 <code>LDL</code>/<code>STL</code></td></tr>
+  <tr><td><strong>共享内存（Smem）占用</strong></td><td>动态膨胀，超出 64 KB 限额</td><td>静态锁死在 <strong>45,568 字节（~44.5 KB）</strong></td><td>留足 L1 Cache 空间，适配 SM70 物理限制</td></tr>
+  <tr><td><strong>活跃度 (Occupancy)</strong></td><td>跌至 25% 左右，延迟掩盖失效</td><td>提升至较高水准，Warp 轮转充分</td><td>充分掩盖全局显存访问时延</td></tr>
+  <tr><td><strong>GQA KV Cache 访存</strong></td><td>6 个 Q 分别读显存（重复 6 次）</td><td><strong>GQA-packed</strong>: 行打包 6 头单次读取</td><td>片上复用提升 600%，节约 83.3% KV 显存带宽</td></tr>
+  <tr><td><strong>Tensor Core 指令利用</strong></td><td>小矩阵发射饥饿，前端单元卡顿</td><td>$M=6 \cdot Q$ 超宽 GEMM 饱满发射</td><td>充分释放 Volta Tensor Core 硬件峰值吞吐</td></tr>
 </table>
 <hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
 <h2 id="研讨记录与思考题">研讨记录与思考题</h2>

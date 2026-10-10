@@ -796,7 +796,16 @@
   <li class="toc-item toc-level-4"><a href="#核心推导两块数据的-Softmax-增量拼接" class="toc-link" title="核心推导：两块数据的 Softmax 增量拼接">核心推导：两块数据的 Softmax 增量拼接</a></li>
   <li class="toc-item toc-level-4"><a href="#深入剖析为什么工程上可以省去除法数学约分与硬件考量" class="toc-link" title="深入剖析：为什么工程上可以省去除法？（数学约分与硬件考量）">深入剖析：为什么工程上可以省去除法？（数学约分与硬件考量）</a></li>
   <li class="toc-item toc-level-4"><a href="#递推结论与硬件状态演化" class="toc-link" title="递推结论与硬件状态演化">递推结论与硬件状态演化</a></li>
-  <li class="toc-item toc-level-2"><a href="#五1Cat-vLLM-在-V100-上的优化方向PR-286" class="toc-link" title="五、1Cat-vLLM 在 V100 上的优化方向（PR 286）">五、1Cat-vLLM 在 V100 上的优化方向（PR #286）</a></li>
+  <li class="toc-item toc-level-2"><a href="#五1Cat-vLLM-在-V100-上的优化实现PR-286-深度解析" class="toc-link" title="五、1Cat-vLLM 在 V100 上的优化实现（PR 286 深度解析）">五、1Cat-vLLM 在 V100 上的优化实现（PR #286 深度解析）</a></li>
+  <li class="toc-item toc-level-3"><a href="#1-优化一Split-D头维度空间切分" class="toc-link" title="1. 优化一：Split-D（头维度空间切分）">1. 优化一：Split-D（头维度空间切分）</a></li>
+  <li class="toc-item toc-level-4"><a href="#痛点根因片上资源吃紧与寄存器溢出" class="toc-link" title="痛点根因：片上资源吃紧与寄存器溢出">痛点根因：片上资源吃紧与寄存器溢出</a></li>
+  <li class="toc-item toc-level-4"><a href="#解决方案与数学原理" class="toc-link" title="解决方案与数学原理">解决方案与数学原理</a></li>
+  <li class="toc-item toc-level-4"><a href="#工程收益" class="toc-link" title="工程收益">工程收益</a></li>
+  <li class="toc-item toc-level-3"><a href="#2-优化二GQA-packed-Wide-QKPV-GEMM分组注意力多头宽打包" class="toc-link" title="2. 优化二：GQA-packed Wide QK/PV GEMM（分组注意力多头宽打包）">2. 优化二：GQA-packed Wide QK/PV GEMM（分组注意力多头宽打包）</a></li>
+  <li class="toc-item toc-level-4"><a href="#痛点根因GQA-重复读取与小矩阵指令发射饥饿" class="toc-link" title="痛点根因：GQA 重复读取与小矩阵指令发射饥饿">痛点根因：GQA 重复读取与小矩阵指令发射饥饿</a></li>
+  <li class="toc-item toc-level-4"><a href="#解决方案打包为宽矩阵乘Wide-GEMM" class="toc-link" title="解决方案：打包为宽矩阵乘（Wide GEMM）">解决方案：打包为宽矩阵乘（Wide GEMM）</a></li>
+  <li class="toc-item toc-level-4"><a href="#工程收益-1" class="toc-link" title="工程收益">工程收益</a></li>
+  <li class="toc-item toc-level-3"><a href="#3-两项优化结合的前后性能对照" class="toc-link" title="3. 两项优化结合的前后性能对照">3. 两项优化结合的前后性能对照</a></li>
   <li class="toc-item toc-level-2"><a href="#研讨记录与思考题" class="toc-link" title="研讨记录与思考题">研讨记录与思考题</a></li>
 </ul>
                 </nav>
@@ -1115,16 +1124,109 @@ const half* k_ptr = kv_cache + physical_page * page_stride + page_offset * head_
   <li><strong>算子融合（Fused Kernel）</strong>：GEMM-1 ($QK^T$)、Softmax 和 GEMM-2 ($PV$) 在单次 Kernel 执行内流水线完成。</li>
 </ol>
 <hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
-<h2 id="五1Cat-vLLM-在-V100-上的优化方向PR-286">五、1Cat-vLLM 在 V100 上的优化方向（PR #286）</h2>
-<p>针对早期实现在 V100 上吞吐偏低的问题（约 17.92 TFLOP/s），1Cat-vLLM 在 <strong>PR #286</strong> 中引入了两项核心改进：</p>
+<h2 id="五1Cat-vLLM-在-V100-上的优化实现PR-286-深度解析">五、1Cat-vLLM 在 V100 上的优化实现（PR #286 深度解析）</h2>
+<p>在早期实现中，1Cat-vLLM 在 Tesla V100 上运行自注意力算子的实测吞吐仅约 <strong>17.92 TFLOP/s</strong>，仅达到 V100 理论峰值算力（125 TFLOP/s）的约 14.3%，出现了严重的算力瓶颈。在 <strong>PR #286</strong> 中，项目引入了两项关键的架构级优化，将实测吞吐提升至 <strong>≈60.8 TFLOP/s</strong>（提升超过 3.4 倍）。</p>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h3 id="1-优化一Split-D头维度空间切分">1. 优化一：Split-D（头维度空间切分）</h3>
+<h4 id="痛点根因片上资源吃紧与寄存器溢出">痛点根因：片上资源吃紧与寄存器溢出</h4>
+<p>现代大模型（如 LLaMA-2/3、Qwen、Mistral）的标准头维度通常为：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\text{head\_dim} = d = 128$$</div>
 <ul>
-  <li><strong>Split-D</strong>：将较大的 Head Dimension 切分成适合 Volta 共享内存与寄存器容量的小 Tile；</li>
-  <li><strong>GQA-packed Wide QK/PV GEMM</strong>：将 6 个共享同一组 KV 的 Query Heads 打包成一个更宽的 GEMM，降低指令发射开销并提高 Tensor Core 计算密度，将实测吞吐提升至 <strong>≈60.8 TFLOP/s</strong>。</li>
+  <li><strong>原生 FlashAttention 的假定</strong>：主要面向 Ampere (A100) 设计，一个 Thread Block 能够将整个 $d=128$ 维度的 Tile 完整装入片上共享内存和寄存器。</li>
+  <li><strong>Volta (SM70) 的硬件瓶颈</strong>：</li>
 </ul>
+<ol>
+  <li><strong>共享内存容量受限</strong>：V100 的 L1 Cache 与 Shared Memory 共享 128 KB，实际分配给 Shared Memory 通常仅 64 KB 或 96 KB；</li>
+  <li><strong>寄存器溢出（Register Spilling）</strong>：每个 SM 仅有 64K 个 32-bit 寄存器，由 4 个 Processing Block 瓜分。若维持原有的序列块大小，单个线程占用寄存器数量会剧增，迫使编译器将多余变量溢出到极慢的 Local Memory（显存）；</li>
+  <li><strong>活跃度（Occupancy）暴跌</strong>：资源耗尽导致 SM 仅能并发极少量的 Warp，硬件无法通过线程快速切换掩盖访存延迟。</li>
+</ol>
+<h4 id="解决方案与数学原理">解决方案与数学原理</h4>
+<p>将原本庞大的特征维度 $d$ 沿空间轴进行切分（例如 $d = 128$ 切分为两个子块 $d_{\text{sub}} = 64$）：</p>
+<div class="code-block">
+  <div class="code-header">
+    <span class="code-lang">TEXT</span>
+    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>复制</span>
+    </button>
+  </div>
+  <pre><code class="language-text">原始 Head Dim = 128 (片上资源吃紧):
+[───────────────────────── d = 128 ─────────────────────────]
+                              │
+                    沿特征维度 d 对半切分
+                              ▼
+        Tile 1 (0 ~ 63)               Tile 2 (64 ~ 127)
+[─────── d_sub = 64 ───────]  +  [─────── d_sub = 64 ───────]</code></pre>
+</div>
+<p>由于向量点积的线性可加性：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$Q \cdot K = \sum_{k=0}^{127} Q_k K_k = \sum_{k=0}^{63} Q_k K_k + \sum_{k=64}^{127} Q_k K_k$$</div>
+<h4 id="工程收益">工程收益</h4>
+<ul>
+  <li><strong>单线程寄存器压力减半</strong>：单个 Thread Block 每次只处理 64 维度的中间张量，彻底消除 Register Spill；</li>
+  <li><strong>提升硬件 Occupancy</strong>：每个 SM 能常驻更多活跃 Warp，极大提升了延迟掩盖能力。</li>
+</ul>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h3 id="2-优化二GQA-packed-Wide-QKPV-GEMM分组注意力多头宽打包">2. 优化二：GQA-packed Wide QK/PV GEMM（分组注意力多头宽打包）</h3>
+<h4 id="痛点根因GQA-重复读取与小矩阵指令发射饥饿">痛点根因：GQA 重复读取与小矩阵指令发射饥饿</h4>
+<p>在主流大模型中，通常采用 <strong>GQA（Grouped-Query Attention）</strong> 结构，例如 6 个或 8 个 Query Heads 共享同 1 组 KV Head：</p>
+<div style="text-align: center; margin: 18px 0; font-size: 1.15em;">$$\text{GQA 共享比} = 6 : 1$$</div>
+<ul>
+  <li><strong>朴素实现的双重缺陷</strong>：</li>
+</ul>
+<ol>
+  <li><strong>KV Cache 冗余访存</strong>：若 6 个 Q Head 独立启动计算，同一份 KV Cache 数据会被从显存中重复加载 6 次；</li>
+  <li><strong>Volta Tensor Core 指令发射瓶颈</strong>：Volta 的硬件 Tensor Core 指令为 <code>mma.sync.m8n8k4</code>，单条汇编指令仅处理 $8 \times 8 \times 4$ 微矩阵。若按单头执行，由于 Query 行数极窄（$M=1$），矩阵极度细长，Tensor Core 硬件单次发射吞吐吃不饱，而指令发射单元（Dispatch Unit）却因发射海量小指令而过载卡死。</li>
+</ol>
+<h4 id="解决方案打包为宽矩阵乘Wide-GEMM">解决方案：打包为宽矩阵乘（Wide GEMM）</h4>
+<p>将属于同一个 KV Head 分组的 6 个 Query Head 在行维度<strong>打包对齐（Pack）</strong>，拼接为一个宽矩阵：</p>
+<div class="code-block">
+  <div class="code-header">
+    <span class="code-lang">TEXT</span>
+    <button class="copy-btn" onclick="copyCode(this)" title="复制代码">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>复制</span>
+    </button>
+  </div>
+  <pre><code class="language-text">【朴素独立计算：KV 重复加载 6 次，指令碎片化】
+Q0 (1×d) ──┐
+Q1 (1×d) ──┼──&gt; 各自去显存加载同一份 KV Cache ──&gt; 显存搬运膨胀 6 倍，小指令发射卡顿
+...        │
+Q5 (1×d) ──┘
+
+【GQA-packed 打包计算：宽矩阵单次 GEMM，KV 仅加载 1 次】
+   ┌───────────┐
+   │ Q0 (1×d)  │
+   │ Q1 (1×d)  │
+   │   ...     │  ──拼成宽矩阵──&gt; Q_packed (6×d)
+   │ Q5 (1×d)  │                          │
+   └───────────┘                          ▼
+                         与同一组 KV Cache (16×d) 执行 1 次宽 GEMM 运算</code></pre>
+</div>
+<h4 id="工程收益-1">工程收益</h4>
+<ul>
+  <li><strong>KV Cache 搬运量降低 6 倍（复用率提升 600%）</strong>：物理块进入 Shared Memory 后，在片上被 6 个 Query Head 共同消费，完全消除冗余显存读取；</li>
+  <li><strong>提高 Tensor Core 计算密度</strong>：将离散的小指令发射合并为规整饱满的宽 GEMM 运算，打满 Tensor Core 每个周期的计算能力，突破指令发射瓶颈。</li>
+</ul>
+<hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
+<h3 id="3-两项优化结合的前后性能对照">3. 两项优化结合的前后性能对照</h3>
+<table>
+  <tr><th>指标 / 维度</th><th>优化前（基线实现）</th><th>引入 PR #286 优化后</th><th>核心机制与原理</th></tr>
+  <tr><td><strong>实测吞吐</strong></td><td><strong>17.92 TFLOP/s</strong> (~14.3% 峰值)</td><td><strong>≈ 60.8 TFLOP/s</strong> (~48.6% 峰值)</td><td>算力翻升 3.4 倍，逼近 Volta 实测极限</td></tr>
+  <tr><td><strong>寄存器使用</strong></td><td>超标溢出（Spill 至 Local Memory）</td><td>严格受控（零溢出）</td><td><strong>Split-D</strong> 削减单线程资源占用</td></tr>
+  <tr><td><strong>活跃 Warp 数 (Occupancy)</strong></td><td>极低</td><td>显著提升</td><td>硬件延迟得到有效并发掩盖</td></tr>
+  <tr><td><strong>KV Cache 显存读</strong></td><td>6 个 Q Head 重复读 6 遍</td><td>1 份 KV 数据在片上复用 6 次</td><td><strong>GQA-packed</strong> 实现 6 倍片上数据复用</td></tr>
+  <tr><td><strong>指令发射单元压力</strong></td><td>发射极小粒度 <code>m8n8k4</code> 导致前端堵塞</td><td>宽矩阵乘打满硬件单指令计算密度</td><td>消除指令发射瓶颈</td></tr>
+</table>
 <hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>
 <h2 id="研讨记录与思考题">研讨记录与思考题</h2>
 <ul>
-  <li><input type="checkbox" disabled style="margin-right: 6px;"> <strong>思考题 1</strong>：在 GQA 中，多个 Q Head 共享同一个 KV Head。如果每个 Q 分别启动一个 Kernel，会产生哪些重复访存？</li>
+  <li><input type="checkbox" disabled style="margin-right: 6px;"> <strong>思考题 1</strong>：在 GQA 中，多个 Q Head 共享同一个 KV Head。如果每个 Q 分别启动一个 Kernel，会产生哪些重复访存？打包成宽 GEMM 为什么能提高算力利用率？</li>
   <li><input type="checkbox" disabled style="margin-right: 6px;"> <strong>思考题 2</strong>：在计算 $QK^T$ 时，$K$ 原本按行存储，转置后按列读取。Shared Memory 的 32 个 Bank 会产生何种冲突？工业界通常采用什么排布方式（Padding 或 Swizzle）解决？</li>
 </ul>
 <hr style='border: 0; border-top: 1px solid var(--border-color); margin: 32px 0;'>

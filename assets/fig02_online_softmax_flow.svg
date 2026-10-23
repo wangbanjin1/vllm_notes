@@ -1,0 +1,315 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 635" width="100%">
+
+  <defs>
+    <style>
+      .fig-bg { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1; }
+      .stage-title { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 13px; font-weight: 700; fill: #0f172a; }
+      .op-node { fill: #f8fafc; stroke: #64748b; stroke-width: 1.2; }
+      .op-text { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 11.5px; font-weight: 700; fill: #1e293b; text-anchor: middle; }
+      .note-card { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1; rx: 3; }
+      .note-title { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 11.5px; font-weight: 700; fill: #0f172a; }
+      .ledger-box { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1; rx: 2; }
+      .ledger-key { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 12px; font-weight: 700; fill: #0f172a; }
+      .sig-line { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 11px; fill: #94a3b8; text-anchor: middle; }
+      .bracket { fill: none; stroke: #475569; stroke-width: 1.3; stroke-linecap: square; }
+      .arrow { stroke: #64748b; stroke-width: 1.3; fill: none; marker-end: url(#arrowhead); }
+      .arrow-accent { stroke: #c95b5b; stroke-width: 1.4; fill: none; marker-end: url(#arrowhead-red); }
+      .arrow-teal { stroke: #4f8fa5; stroke-width: 1.4; fill: none; marker-end: url(#arrowhead-teal); }
+    </style>
+    <marker id="arrowhead" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto">
+      <polygon points="0 0, 7 2.5, 0 5" fill="#64748b" />
+    </marker>
+    <marker id="arrowhead-red" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto">
+      <polygon points="0 0, 7 2.5, 0 5" fill="#c95b5b" />
+    </marker>
+    <marker id="arrowhead-teal" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto">
+      <polygon points="0 0, 7 2.5, 0 5" fill="#4f8fa5" />
+    </marker>
+  </defs>
+
+<rect class="fig-bg" x="1" y="1" width="978" height="633" rx="4"/>
+<foreignObject x="20.0" y="6.0" width="940.0" height="32.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:14.2px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\displaystyle m^{\text{new}} = \max\!\left(m^{(1)}, m^{(2)}\right), \qquad l^{\text{new}} = e^{m^{(1)} - m^{\text{new}}} l^{(1)} + e^{m^{(2)} - m^{\text{new}}} l^{(2)}, \qquad \tilde{\mathbf{O}}^{\text{new}} = e^{m^{(1)} - m^{\text{new}}} \tilde{\mathbf{O}}^{(1)} + \exp\!\left(\mathbf{S}^{(2)} - m^{\text{new}}\right)\mathbf{V}^{(2)}$</span></div>
+</foreignObject>
+<foreignObject x="20.0" y="38.0" width="940.0" height="22.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#475569;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>—— 核心洞察：片上寄存器仅维护未归一化分子 $\tilde{\mathbf{O}}$ 与统计量 $(m, l)$，中间块 $l^{(2)}$ 乘除直接代数约分抵消，全程零中间除法！</span></div>
+</foreignObject>
+<line x1="24" y1="64" x2="956" y2="64" stroke="#e2e8f0" stroke-width="1"/>
+<foreignObject x="28.0" y="70.0" width="780.0" height="24.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;font-size:12.8px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:left;"><span><strong>(a) 传统 Safe Softmax 的全局屏障 vs. Online Softmax 在线流式递推</strong></span></div>
+</foreignObject>
+<rect x="36.0" y="104.0" width="11" height="11" rx="1" fill="#eac0c0"/>
+<rect x="49.0" y="104.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="62.0" y="104.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="75.0" y="104.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="88.0" y="104.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="101.0" y="104.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="36.0" y="117.0" width="11" height="11" rx="1" fill="#da8e8e"/>
+<rect x="49.0" y="117.0" width="11" height="11" rx="1" fill="#eac0c0"/>
+<rect x="62.0" y="117.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="75.0" y="117.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="88.0" y="117.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="101.0" y="117.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="36.0" y="130.0" width="11" height="11" rx="1" fill="#c95b5b"/>
+<rect x="49.0" y="130.0" width="11" height="11" rx="1" fill="#c95b5b"/>
+<rect x="62.0" y="130.0" width="11" height="11" rx="1" fill="#c95b5b"/>
+<rect x="75.0" y="130.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="88.0" y="130.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="101.0" y="130.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="36.0" y="143.0" width="11" height="11" rx="1" fill="#eac0c0"/>
+<rect x="49.0" y="143.0" width="11" height="11" rx="1" fill="#da8e8e"/>
+<rect x="62.0" y="143.0" width="11" height="11" rx="1" fill="#c95b5b"/>
+<rect x="75.0" y="143.0" width="11" height="11" rx="1" fill="#eac0c0"/>
+<rect x="88.0" y="143.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="101.0" y="143.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="36.0" y="156.0" width="11" height="11" rx="1" fill="#da8e8e"/>
+<rect x="49.0" y="156.0" width="11" height="11" rx="1" fill="#eac0c0"/>
+<rect x="62.0" y="156.0" width="11" height="11" rx="1" fill="#c95b5b"/>
+<rect x="75.0" y="156.0" width="11" height="11" rx="1" fill="#da8e8e"/>
+<rect x="88.0" y="156.0" width="11" height="11" rx="1" fill="#eac0c0"/>
+<rect x="101.0" y="156.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="36.0" y="169.0" width="11" height="11" rx="1" fill="#c95b5b"/>
+<rect x="49.0" y="169.0" width="11" height="11" rx="1" fill="#c95b5b"/>
+<rect x="62.0" y="169.0" width="11" height="11" rx="1" fill="#c95b5b"/>
+<rect x="75.0" y="169.0" width="11" height="11" rx="1" fill="#c95b5b"/>
+<rect x="88.0" y="169.0" width="11" height="11" rx="1" fill="#c95b5b"/>
+<rect x="101.0" y="169.0" width="11" height="11" rx="1" fill="#c95b5b"/>
+<path class="bracket" d="M 36.5 100.5 L 32.5 100.5 L 32.5 183.5 L 36.5 183.5"/>
+<path class="bracket" d="M 111.5 100.5 L 115.5 100.5 L 115.5 183.5 L 111.5 183.5"/>
+<foreignObject x="26.0" y="196.0" width="96.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12.8px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathbf{S} = \mathbf{Q}\mathbf{K}^\top$</span></div>
+</foreignObject>
+<foreignObject x="21.0" y="218.0" width="106.0" height="18.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$(N \times N)$ 落盘 HBM</span></div>
+</foreignObject>
+<line x1="120" y1="144" x2="192" y2="144" class="arrow-accent"/>
+<foreignObject x="122.0" y="118.0" width="68.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#c95b5b;font-weight:700;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathcal{O}(N^2)$ 读写</span></div>
+</foreignObject>
+<rect x="200.0" y="104.0" width="11" height="11" rx="1" fill="#f8d6ba"/>
+<rect x="213.0" y="104.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="226.0" y="104.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="239.0" y="104.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="252.0" y="104.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="265.0" y="104.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="200.0" y="117.0" width="11" height="11" rx="1" fill="#f3b787"/>
+<rect x="213.0" y="117.0" width="11" height="11" rx="1" fill="#f8d6ba"/>
+<rect x="226.0" y="117.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="239.0" y="117.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="252.0" y="117.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="265.0" y="117.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="200.0" y="130.0" width="11" height="11" rx="1" fill="#ee995b"/>
+<rect x="213.0" y="130.0" width="11" height="11" rx="1" fill="#ee995b"/>
+<rect x="226.0" y="130.0" width="11" height="11" rx="1" fill="#ee995b"/>
+<rect x="239.0" y="130.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="252.0" y="130.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="265.0" y="130.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="200.0" y="143.0" width="11" height="11" rx="1" fill="#f8d6ba"/>
+<rect x="213.0" y="143.0" width="11" height="11" rx="1" fill="#f3b787"/>
+<rect x="226.0" y="143.0" width="11" height="11" rx="1" fill="#ee995b"/>
+<rect x="239.0" y="143.0" width="11" height="11" rx="1" fill="#f8d6ba"/>
+<rect x="252.0" y="143.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="265.0" y="143.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="200.0" y="156.0" width="11" height="11" rx="1" fill="#f3b787"/>
+<rect x="213.0" y="156.0" width="11" height="11" rx="1" fill="#f8d6ba"/>
+<rect x="226.0" y="156.0" width="11" height="11" rx="1" fill="#ee995b"/>
+<rect x="239.0" y="156.0" width="11" height="11" rx="1" fill="#f3b787"/>
+<rect x="252.0" y="156.0" width="11" height="11" rx="1" fill="#f8d6ba"/>
+<rect x="265.0" y="156.0" width="11" height="11" rx="1" fill="#ffffff" stroke="#cbd5e1" stroke-width="0.6"/>
+<rect x="200.0" y="169.0" width="11" height="11" rx="1" fill="#ee995b"/>
+<rect x="213.0" y="169.0" width="11" height="11" rx="1" fill="#ee995b"/>
+<rect x="226.0" y="169.0" width="11" height="11" rx="1" fill="#ee995b"/>
+<rect x="239.0" y="169.0" width="11" height="11" rx="1" fill="#ee995b"/>
+<rect x="252.0" y="169.0" width="11" height="11" rx="1" fill="#ee995b"/>
+<rect x="265.0" y="169.0" width="11" height="11" rx="1" fill="#ee995b"/>
+<path class="bracket" d="M 200.5 100.5 L 196.5 100.5 L 196.5 183.5 L 200.5 183.5"/>
+<path class="bracket" d="M 275.5 100.5 L 279.5 100.5 L 279.5 183.5 L 275.5 183.5"/>
+<foreignObject x="180.0" y="196.0" width="116.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12.5px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathbf{P} = \text{Softmax}(\mathbf{S})$</span></div>
+</foreignObject>
+<foreignObject x="178.0" y="218.0" width="120.0" height="18.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>三遍扫全行求 $m, l$</span></div>
+</foreignObject>
+<line x1="296" y1="98" x2="296" y2="236" stroke="#cbd5e1" stroke-width="1" stroke-dasharray="4,4"/>
+<rect x="316.0" y="116.0" width="10.5" height="10.5" rx="1" fill="#f8d6ba"/>
+<rect x="328.5" y="116.0" width="10.5" height="10.5" rx="1" fill="#f3b787"/>
+<rect x="341.0" y="116.0" width="10.5" height="10.5" rx="1" fill="#ee995b"/>
+<rect x="353.5" y="116.0" width="10.5" height="10.5" rx="1" fill="#f8d6ba"/>
+<rect x="366.0" y="116.0" width="10.5" height="10.5" rx="1" fill="#f3b787"/>
+<rect x="378.5" y="116.0" width="10.5" height="10.5" rx="1" fill="#ee995b"/>
+<rect x="316.0" y="128.5" width="10.5" height="10.5" rx="1" fill="#f3b787"/>
+<rect x="328.5" y="128.5" width="10.5" height="10.5" rx="1" fill="#f8d6ba"/>
+<rect x="341.0" y="128.5" width="10.5" height="10.5" rx="1" fill="#ee995b"/>
+<rect x="353.5" y="128.5" width="10.5" height="10.5" rx="1" fill="#f3b787"/>
+<rect x="366.0" y="128.5" width="10.5" height="10.5" rx="1" fill="#f8d6ba"/>
+<rect x="378.5" y="128.5" width="10.5" height="10.5" rx="1" fill="#ee995b"/>
+<rect x="316.0" y="141.0" width="10.5" height="10.5" rx="1" fill="#ee995b"/>
+<rect x="328.5" y="141.0" width="10.5" height="10.5" rx="1" fill="#ee995b"/>
+<rect x="341.0" y="141.0" width="10.5" height="10.5" rx="1" fill="#ee995b"/>
+<rect x="353.5" y="141.0" width="10.5" height="10.5" rx="1" fill="#ee995b"/>
+<rect x="366.0" y="141.0" width="10.5" height="10.5" rx="1" fill="#ee995b"/>
+<rect x="378.5" y="141.0" width="10.5" height="10.5" rx="1" fill="#ee995b"/>
+<rect x="316.0" y="153.5" width="10.5" height="10.5" rx="1" fill="#f8d6ba"/>
+<rect x="328.5" y="153.5" width="10.5" height="10.5" rx="1" fill="#f3b787"/>
+<rect x="341.0" y="153.5" width="10.5" height="10.5" rx="1" fill="#ee995b"/>
+<rect x="353.5" y="153.5" width="10.5" height="10.5" rx="1" fill="#f8d6ba"/>
+<rect x="366.0" y="153.5" width="10.5" height="10.5" rx="1" fill="#f3b787"/>
+<rect x="378.5" y="153.5" width="10.5" height="10.5" rx="1" fill="#ee995b"/>
+<path class="bracket" d="M 316.5 112.5 L 312.5 112.5 L 312.5 167.5 L 316.5 167.5"/>
+<path class="bracket" d="M 388.5 112.5 L 392.5 112.5 L 392.5 167.5 L 388.5 167.5"/>
+<foreignObject x="312.5" y="196.0" width="80.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12.8px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathbf{Q}_{\text{tile}}$</span></div>
+</foreignObject>
+<foreignObject x="306.5" y="218.0" width="92.0" height="18.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$(B_r \times d)$ 常驻</span></div>
+</foreignObject>
+<foreignObject x="393.0" y="134.0" width="22.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:14px;color:#1e293b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\times$</span></div>
+</foreignObject>
+<rect x="420.0" y="104.0" width="10.5" height="10.5" rx="1" fill="#b9d6e0"/>
+<rect x="432.5" y="104.0" width="10.5" height="10.5" rx="1" fill="#7fb3c5"/>
+<rect x="445.0" y="104.0" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="457.5" y="104.0" width="10.5" height="10.5" rx="1" fill="#b9d6e0"/>
+<rect x="420.0" y="116.5" width="10.5" height="10.5" rx="1" fill="#7fb3c5"/>
+<rect x="432.5" y="116.5" width="10.5" height="10.5" rx="1" fill="#b9d6e0"/>
+<rect x="445.0" y="116.5" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="457.5" y="116.5" width="10.5" height="10.5" rx="1" fill="#7fb3c5"/>
+<rect x="420.0" y="129.0" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="432.5" y="129.0" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="445.0" y="129.0" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="457.5" y="129.0" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="420.0" y="141.5" width="10.5" height="10.5" rx="1" fill="#b9d6e0"/>
+<rect x="432.5" y="141.5" width="10.5" height="10.5" rx="1" fill="#7fb3c5"/>
+<rect x="445.0" y="141.5" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="457.5" y="141.5" width="10.5" height="10.5" rx="1" fill="#b9d6e0"/>
+<rect x="420.0" y="154.0" width="10.5" height="10.5" rx="1" fill="#7fb3c5"/>
+<rect x="432.5" y="154.0" width="10.5" height="10.5" rx="1" fill="#b9d6e0"/>
+<rect x="445.0" y="154.0" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="457.5" y="154.0" width="10.5" height="10.5" rx="1" fill="#7fb3c5"/>
+<rect x="420.0" y="166.5" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="432.5" y="166.5" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="445.0" y="166.5" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="457.5" y="166.5" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<path class="bracket" d="M 420.5 100.5 L 416.5 100.5 L 416.5 180.5 L 420.5 180.5"/>
+<path class="bracket" d="M 467.5 100.5 L 471.5 100.5 L 471.5 180.5 L 467.5 180.5"/>
+<foreignObject x="403.0" y="196.0" width="82.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12.5px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\left(\mathbf{K}^{(j)}\right)^\top$</span></div>
+</foreignObject>
+<foreignObject x="399.0" y="218.0" width="90.0" height="18.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$(d \times B_c)$ 流式</span></div>
+</foreignObject>
+<line x1="476" y1="142" x2="508" y2="142" class="arrow-teal"/>
+<rect x="516.0" y="116.0" width="10.5" height="10.5" rx="1" fill="#d1c7e3"/>
+<rect x="528.5" y="116.0" width="10.5" height="10.5" rx="1" fill="#ae9ecf"/>
+<rect x="541.0" y="116.0" width="10.5" height="10.5" rx="1" fill="#8a74b5"/>
+<rect x="553.5" y="116.0" width="10.5" height="10.5" rx="1" fill="#d1c7e3"/>
+<rect x="516.0" y="128.5" width="10.5" height="10.5" rx="1" fill="#ae9ecf"/>
+<rect x="528.5" y="128.5" width="10.5" height="10.5" rx="1" fill="#d1c7e3"/>
+<rect x="541.0" y="128.5" width="10.5" height="10.5" rx="1" fill="#8a74b5"/>
+<rect x="553.5" y="128.5" width="10.5" height="10.5" rx="1" fill="#ae9ecf"/>
+<rect x="516.0" y="141.0" width="10.5" height="10.5" rx="1" fill="#8a74b5"/>
+<rect x="528.5" y="141.0" width="10.5" height="10.5" rx="1" fill="#8a74b5"/>
+<rect x="541.0" y="141.0" width="10.5" height="10.5" rx="1" fill="#8a74b5"/>
+<rect x="553.5" y="141.0" width="10.5" height="10.5" rx="1" fill="#8a74b5"/>
+<rect x="516.0" y="153.5" width="10.5" height="10.5" rx="1" fill="#d1c7e3"/>
+<rect x="528.5" y="153.5" width="10.5" height="10.5" rx="1" fill="#ae9ecf"/>
+<rect x="541.0" y="153.5" width="10.5" height="10.5" rx="1" fill="#8a74b5"/>
+<rect x="553.5" y="153.5" width="10.5" height="10.5" rx="1" fill="#d1c7e3"/>
+<path class="bracket" d="M 516.5 112.5 L 512.5 112.5 L 512.5 167.5 L 516.5 167.5"/>
+<path class="bracket" d="M 563.5 112.5 L 567.5 112.5 L 567.5 167.5 L 563.5 167.5"/>
+<foreignObject x="505.0" y="196.0" width="70.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12.8px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathbf{S}^{(j)}$</span></div>
+</foreignObject>
+<foreignObject x="491.0" y="218.0" width="98.0" height="18.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$(B_r \times B_c)$ 寄存器</span></div>
+</foreignObject>
+<line x1="572" y1="142" x2="604" y2="142" class="arrow-teal"/>
+<rect x="614.0" y="116.0" width="10.5" height="10.5" rx="1" fill="#bce0c4"/>
+<rect x="626.5" y="116.0" width="10.5" height="10.5" rx="1" fill="#89c195"/>
+<rect x="614.0" y="128.5" width="10.5" height="10.5" rx="1" fill="#bce0c4"/>
+<rect x="626.5" y="128.5" width="10.5" height="10.5" rx="1" fill="#89c195"/>
+<rect x="614.0" y="141.0" width="10.5" height="10.5" rx="1" fill="#bce0c4"/>
+<rect x="626.5" y="141.0" width="10.5" height="10.5" rx="1" fill="#89c195"/>
+<rect x="614.0" y="153.5" width="10.5" height="10.5" rx="1" fill="#bce0c4"/>
+<rect x="626.5" y="153.5" width="10.5" height="10.5" rx="1" fill="#89c195"/>
+<path class="bracket" d="M 614.5 112.5 L 610.5 112.5 L 610.5 167.5 L 614.5 167.5"/>
+<path class="bracket" d="M 636.5 112.5 L 640.5 112.5 L 640.5 167.5 L 636.5 167.5"/>
+<foreignObject x="598.5" y="196.0" width="54.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12.8px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$m,\; l$</span></div>
+</foreignObject>
+<foreignObject x="594.5" y="218.0" width="62.0" height="18.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$(B_r \times 1)$</span></div>
+</foreignObject>
+<rect x="682.0" y="116.0" width="10.5" height="10.5" rx="1" fill="#b9d6e0"/>
+<rect x="694.5" y="116.0" width="10.5" height="10.5" rx="1" fill="#7fb3c5"/>
+<rect x="707.0" y="116.0" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="719.5" y="116.0" width="10.5" height="10.5" rx="1" fill="#b9d6e0"/>
+<rect x="732.0" y="116.0" width="10.5" height="10.5" rx="1" fill="#7fb3c5"/>
+<rect x="744.5" y="116.0" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="682.0" y="128.5" width="10.5" height="10.5" rx="1" fill="#7fb3c5"/>
+<rect x="694.5" y="128.5" width="10.5" height="10.5" rx="1" fill="#b9d6e0"/>
+<rect x="707.0" y="128.5" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="719.5" y="128.5" width="10.5" height="10.5" rx="1" fill="#7fb3c5"/>
+<rect x="732.0" y="128.5" width="10.5" height="10.5" rx="1" fill="#b9d6e0"/>
+<rect x="744.5" y="128.5" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="682.0" y="141.0" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="694.5" y="141.0" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="707.0" y="141.0" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="719.5" y="141.0" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="732.0" y="141.0" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="744.5" y="141.0" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="682.0" y="153.5" width="10.5" height="10.5" rx="1" fill="#b9d6e0"/>
+<rect x="694.5" y="153.5" width="10.5" height="10.5" rx="1" fill="#7fb3c5"/>
+<rect x="707.0" y="153.5" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<rect x="719.5" y="153.5" width="10.5" height="10.5" rx="1" fill="#b9d6e0"/>
+<rect x="732.0" y="153.5" width="10.5" height="10.5" rx="1" fill="#7fb3c5"/>
+<rect x="744.5" y="153.5" width="10.5" height="10.5" rx="1" fill="#4f8fa5"/>
+<path class="bracket" d="M 682.5 112.5 L 678.5 112.5 L 678.5 167.5 L 682.5 167.5"/>
+<path class="bracket" d="M 754.5 112.5 L 758.5 112.5 L 758.5 167.5 L 754.5 167.5"/>
+<foreignObject x="683.5" y="196.0" width="70.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:13px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\tilde{\mathbf{O}}$</span></div>
+</foreignObject>
+<foreignObject x="670.5" y="218.0" width="96.0" height="18.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$(B_r \times d)$ 累加器</span></div>
+</foreignObject>
+<rect x="784" y="100" width="172" height="134" class="note-card"/>
+<text x="796" y="120" class="note-title">零 HBM 中间写回</text>
+<foreignObject x="796.0" y="128.0" width="152.0" height="98.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;font-size:10.8px;color:#334155;font-weight:normal;line-height:1.32;white-space:normal;text-align:left;"><span>• $\mathbf{S}^{(j)}$ 与 $\tilde{\mathbf{P}}^{(j)}$ 算完即刻在片上寄存器消费；<br/>• 显存读写复杂度从 $\mathcal{O}(N^2)$ 彻底降至 $\mathcal{O}(N)$！</span></div>
+</foreignObject>
+<foreignObject x="28.0" y="262.0" width="860.0" height="24.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;font-size:12.8px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:left;"><span><strong>(b) 为什么工程代码中看不到「先除 $l^{(2)}$ 再乘 $l^{(2)}$」？</strong> —— 代数约分与 Tensor Core 流水线保护</span></div>
+</foreignObject>
+<rect x="36" y="290" width="436" height="132" rx="3" fill="#fff5f5" stroke="#c95b5b" stroke-width="1.2"/>
+<text x="50" y="312" class="note-title" fill="#991b1b">❌ 机械照搬归一化公式 (触发 SFU 标量除法停顿 Stall)</text>
+<foreignObject x="54.0" y="318.0" width="400.0" height="36.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:13.5px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\displaystyle \mathbf{O}^{(2)} = \frac{\tilde{\mathbf{P}}^{(2)}\mathbf{V}^{(2)}}{\color{#c95b5b}{l^{(2)}}} \quad\longrightarrow\quad {\color{#c95b5b}{l^{(2)}}} \cdot \mathbf{O}^{(2)}$</span></div>
+</foreignObject>
+<foreignObject x="50.0" y="356.0" width="410.0" height="58.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;font-size:10.8px;color:#334155;font-weight:normal;line-height:1.32;white-space:normal;text-align:left;"><span>• Tensor Core 算完后打断流水线，交由 SFU 逐元素做浮点除法 ($\div\, l^{(2)}$)；<br/>• 随后合并时又要再乘回 $l^{(2)}$，白白浪费数十周期指令延迟与精度。</span></div>
+</foreignObject>
+<rect x="492" y="290" width="464" height="132" rx="3" fill="#f0fdf4" stroke="#5b9a68" stroke-width="1.2"/>
+<text x="506" y="312" class="note-title" fill="#166534">✅ 1Cat-vLLM / FlashAttention 真实寄存器更新路径 (tail.cu:L285--L325)</text>
+<foreignObject x="506.0" y="318.0" width="436.0" height="36.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:13.5px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\displaystyle \tilde{\mathbf{O}}^{\text{new}} = 2^{(m_{\text{old}} - m_{\text{new}})\log_2 e} \cdot \tilde{\mathbf{O}}^{\text{old}} + \tilde{\mathbf{P}}^{(2)}\mathbf{V}^{(2)}$</span></div>
+</foreignObject>
+<foreignObject x="506.0" y="356.0" width="438.0" height="60.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;font-size:10.8px;color:#334155;font-weight:normal;line-height:1.32;white-space:normal;text-align:left;"><span>• 分母 $l^{(2)}$ 与外层系数 $l^{(2)}$ 代数上严格抵消，内层循环完全不求局部 $\mathbf{O}^{(2)}$；<br/>• 仅对旧累加器乘缩放因子 $\alpha = 2^{(m_{\text{old}}-m_{\text{new}})\cdot s}$，直到全部 $K,V$ 块结束写回 HBM 前才执行唯一一次 $\div\, l_{\text{final}}$！</span></div>
+</foreignObject>
+<rect x="24" y="442" width="932" height="156" class="ledger-box"/>
+<text x="38" y="466" class="ledger-key">轴</text>
+<foreignObject x="88.0" y="450.0" width="850.0" height="26.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;font-size:11.2px;color:#334155;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:left;"><span>$B_r\;(\texttt{kBlockM}=64)$：单次驻留片上的 Query 行块；$B_c\;(\texttt{kBlockN}=32)$：流式扫过的 Key/Value 列块；$d\;(\texttt{kHeadDim}=256)$：注意力头特征维度。</span></div>
+</foreignObject>
+<line x1="36" y1="480" x2="944" y2="480" stroke="#e2e8f0" stroke-width="1"/>
+<text x="38" y="502" class="ledger-key">对象</text>
+<foreignObject x="88.0" y="486.0" width="850.0" height="26.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;font-size:11.2px;color:#334155;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:left;"><span>$m \in \mathbb{R}^{B_r}$：已扫描前缀的行最大值；$l \in \mathbb{R}^{B_r}$：以当前 $m$ 为基准的指数和分母；$\tilde{\mathbf{O}} \in \mathbb{R}^{B_r \times d}$：未除以 $l$ 的分子累加器；$\alpha = e^{m_{\text{old}} - m_{\text{new}}} \in (0, 1]$：衰减因子。</span></div>
+</foreignObject>
+<line x1="36" y1="516" x2="944" y2="516" stroke="#e2e8f0" stroke-width="1"/>
+<text x="38" y="540" class="ledger-key">机制</text>
+<foreignObject x="88.0" y="522.0" width="850.0" height="66.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;font-size:11.2px;color:#334155;font-weight:normal;line-height:1.32;white-space:normal;text-align:left;"><span>(i) 指数恒等式 $e^{x - m_{\text{new}}} = e^{x - m_{\text{old}}} \cdot e^{m_{\text{old}} - m_{\text{new}}}$ 使得历史统计量 $(l, \tilde{\mathbf{O}})$ 只需乘以标量 $\alpha$ 即可对齐到新基准 $m_{\text{new}}$，且因 $m_{\text{old}} \le m_{\text{new}}$ 保证 $\alpha \le 1$ 永不上溢。<br/>(ii) 1Cat-vLLM 在 <code>tail.cu</code> 中用 $\exp_2\!\big((m_{\text{old}} - m_{\text{new}})\cdot s_{\log_2}\big)$ 替代自然指数，直接映射为单条 GPU 硬件 <code>MUFU.EX2</code> 指令。</span></div>
+</foreignObject>
+<text x="490" y="623" class="sig-line">FlashAttention Online Softmax 在线递推与代数约分消解机制 @ 1Cat-vLLM 源码精读</text>
+</svg>

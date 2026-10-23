@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="parchment">
+<html lang="zh-CN" data-theme="paper">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{TITLE}} - 1Cat-vLLM 源码精读</title>
+    <title>{{TITLE}} - 1Cat-vLLM 源码精读讲义</title>
     <!-- MathJax for rendering LaTeX formulas offline/online gracefully -->
     <script>
         window.MathJax = {
@@ -24,6 +24,46 @@
     <!-- Highlight.js for code syntax highlighting -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <style>
+        /* LaTeX 讲义白底主题 (默认，还原 wdkns-skills xelatex 视觉体验) */
+        :root[data-theme="paper"] {
+            --bg-color: #ffffff;
+            --surface-color: #f8fafc;
+            --surface-elevated: #f1f5f9;
+            --border-color: #cbd5e1;
+            --text-primary: #111827;
+            --text-secondary: #374151;
+            --text-muted: #64748b;
+            --accent-primary: #1d4ed8;
+            --accent-glow: rgba(29, 78, 216, 0.07);
+            --code-bg: #f1f5f9;
+            --code-text: #991b1b;
+            --pre-bg: #fafafa;
+            --pre-text: #1f2937;
+            --table-header: #f1f5f9;
+            --table-alt: #f8fafc;
+            --toggle-bg: #f1f5f9;
+            /* tcolorbox 配色：严格对应 notes-template.tex */
+            --tcb-imp-bg: #fefce8;
+            --tcb-imp-frame: #ca9a04;
+            --tcb-imp-title-bg: #d4a506;
+            --tcb-imp-title-fg: #111827;
+            --tcb-know-bg: #f3f6fc;
+            --tcb-know-frame: #1e40af;
+            --tcb-know-title-bg: #1e40af;
+            --tcb-know-title-fg: #ffffff;
+            --tcb-warn-bg: #fef2f2;
+            --tcb-warn-frame: #b91c1c;
+            --tcb-warn-title-bg: #b91c1c;
+            --tcb-warn-title-fg: #ffffff;
+            --tcb-dial-bg: #f2fbf5;
+            --tcb-dial-frame: #2f7347;
+            --tcb-dial-title-bg: #2f7347;
+            --tcb-dial-title-fg: #ffffff;
+            --meta-box-bg: #fafafa;
+            --meta-box-frame: #52525b;
+        }
+
+        /* 暖阳米纸主题 (护眼模式) */
         :root[data-theme="parchment"] {
             --bg-color: #f7f4ec;
             --surface-color: #eee9dc;
@@ -36,26 +76,32 @@
             --accent-glow: rgba(163, 93, 40, 0.08);
             --code-bg: #eae3d2;
             --code-text: #8d3a2b;
-            --pre-bg: #ece5d6;
+            --pre-bg: #f3efe4;
             --pre-text: #2d3748;
-            --callout-note-bg: #e5ede3;
-            --callout-note-border: #709775;
-            --callout-note-text: #2b5133;
-            --callout-warn-bg: #f5eedb;
-            --callout-warn-border: #c48a37;
-            --callout-warn-text: #704b12;
-            --callout-imp-bg: #e5eaf5;
-            --callout-imp-border: #5c7cb6;
-            --callout-imp-text: #1e3863;
-            --math-bg: #eee7d7;
-            --math-border: #c9bea6;
             --table-header: #e4dccb;
             --table-alt: #f1ecdf;
-            --tag-bg: #dfd5be;
-            --tag-text: #59472d;
             --toggle-bg: #dfd6c2;
+            --tcb-imp-bg: #f8f2d8;
+            --tcb-imp-frame: #c4960c;
+            --tcb-imp-title-bg: #cfa010;
+            --tcb-imp-title-fg: #1a202c;
+            --tcb-know-bg: #eaeff7;
+            --tcb-know-frame: #254b8c;
+            --tcb-know-title-bg: #254b8c;
+            --tcb-know-title-fg: #ffffff;
+            --tcb-warn-bg: #f9ebe8;
+            --tcb-warn-frame: #b02a2a;
+            --tcb-warn-title-bg: #b02a2a;
+            --tcb-warn-title-fg: #ffffff;
+            --tcb-dial-bg: #eaf3ec;
+            --tcb-dial-frame: #346b48;
+            --tcb-dial-title-bg: #346b48;
+            --tcb-dial-title-fg: #ffffff;
+            --meta-box-bg: #f2ede2;
+            --meta-box-frame: #6b6356;
         }
 
+        /* 薄暮夜读主题 */
         :root[data-theme="twilight"] {
             --bg-color: #1a1e24;
             --surface-color: #232931;
@@ -70,29 +116,34 @@
             --code-text: #f08d70;
             --pre-bg: #171b21;
             --pre-text: #cdd3dc;
-            --callout-note-bg: #202b28;
-            --callout-note-border: #4d7a68;
-            --callout-note-text: #8bbfa8;
-            --callout-warn-bg: #2b251d;
-            --callout-warn-border: #8a6c38;
-            --callout-warn-text: #d9b168;
-            --callout-imp-bg: #1d2533;
-            --callout-imp-border: #4a638c;
-            --callout-imp-text: #96b5e3;
-            --math-bg: #1f252d;
-            --math-border: #3b4654;
             --table-header: #262e38;
             --table-alt: #1f242c;
-            --tag-bg: #323c48;
-            --tag-text: #d2a679;
             --toggle-bg: #323b47;
+            --tcb-imp-bg: #292416;
+            --tcb-imp-frame: #b88c14;
+            --tcb-imp-title-bg: #b88c14;
+            --tcb-imp-title-fg: #111827;
+            --tcb-know-bg: #1b2434;
+            --tcb-know-frame: #3b66b0;
+            --tcb-know-title-bg: #3b66b0;
+            --tcb-know-title-fg: #ffffff;
+            --tcb-warn-bg: #2c1b1e;
+            --tcb-warn-frame: #a83232;
+            --tcb-warn-title-bg: #a83232;
+            --tcb-warn-title-fg: #ffffff;
+            --tcb-dial-bg: #1b2922;
+            --tcb-dial-frame: #3a7550;
+            --tcb-dial-title-bg: #3a7550;
+            --tcb-dial-title-fg: #ffffff;
+            --meta-box-bg: #21262e;
+            --meta-box-frame: #586374;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            transition: background-color 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
         }
 
         html {
@@ -100,11 +151,11 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+            font-family: "Noto Serif CJK SC", "Source Han Serif SC", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", serif;
             background-color: var(--bg-color);
             color: var(--text-primary);
-            line-height: 1.85;
-            padding: 30px 16px;
+            line-height: 1.88;
+            padding: 32px 16px;
             font-size: 16px;
             text-rendering: optimizeLegibility;
             -webkit-font-smoothing: antialiased;
@@ -114,34 +165,33 @@
             display: flex;
             justify-content: center;
             align-items: flex-start;
-            max-width: 1360px;
+            max-width: 1380px;
             margin: 0 auto;
-            gap: 36px;
+            gap: 40px;
             position: relative;
         }
 
         /* 左侧大纲导航栏 */
         .sidebar-toc {
-            width: 280px;
+            width: 285px;
             flex-shrink: 0;
             position: sticky;
             top: 24px;
             max-height: calc(100vh - 48px);
             display: flex;
             flex-direction: column;
-            transition: all 0.25s ease;
             z-index: 90;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
         }
 
         .toc-card {
             background-color: var(--surface-color);
             border: 1px solid var(--border-color);
-            border-radius: 10px;
+            border-radius: 6px;
             padding: 16px;
             display: flex;
             flex-direction: column;
             max-height: calc(100vh - 48px);
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.02);
         }
 
         .toc-header {
@@ -158,7 +208,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 0.95rem;
+            font-size: 0.94rem;
             font-weight: 700;
             color: var(--text-primary);
         }
@@ -170,14 +220,13 @@
         .toc-action-btn {
             background: transparent;
             border: 1px solid transparent;
-            border-radius: 6px;
+            border-radius: 4px;
             color: var(--text-muted);
             cursor: pointer;
             padding: 4px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s;
         }
 
         .toc-action-btn:hover {
@@ -192,71 +241,33 @@
             padding-right: 4px;
         }
 
-        .toc-body::-webkit-scrollbar {
-            width: 5px;
-        }
-        .toc-body::-webkit-scrollbar-thumb {
-            background: var(--border-color);
-            border-radius: 4px;
-        }
+        .toc-body::-webkit-scrollbar { width: 5px; }
+        .toc-body::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
 
-        .toc-list {
-            list-style: none;
-            padding: 0;
-            margin: 0;
-        }
-
-        .toc-item {
-            margin: 2px 0;
-            line-height: 1.4;
-        }
-
-        .toc-level-2 {
-            margin-top: 8px;
-            padding-left: 0;
-        }
-
-        .toc-level-3 {
-            padding-left: 14px;
-        }
-
-        .toc-level-4 {
-            padding-left: 26px;
-        }
+        .toc-list { list-style: none; padding: 0; margin: 0; }
+        .toc-item { margin: 2px 0; line-height: 1.4; }
+        .toc-level-2 { margin-top: 8px; padding-left: 0; }
+        .toc-level-3 { padding-left: 14px; }
+        .toc-level-4 { padding-left: 26px; }
 
         .toc-link {
             display: block;
             padding: 5px 8px;
             color: var(--text-secondary);
             text-decoration: none;
-            font-size: 0.86rem;
-            border-radius: 6px;
-            transition: all 0.2s ease;
+            font-size: 0.85rem;
+            border-radius: 4px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
             border-left: 2px solid transparent;
         }
 
-        .toc-level-2 > .toc-link {
-            font-weight: 600;
-            font-size: 0.88rem;
-        }
+        .toc-level-2 > .toc-link { font-weight: 600; font-size: 0.87rem; }
+        .toc-level-3 > .toc-link { font-size: 0.82rem; }
+        .toc-level-4 > .toc-link { font-size: 0.79rem; color: var(--text-muted); }
 
-        .toc-level-3 > .toc-link {
-            font-size: 0.83rem;
-        }
-
-        .toc-level-4 > .toc-link {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-        }
-
-        .toc-link:hover {
-            color: var(--accent-primary);
-            background: var(--accent-glow);
-        }
-
+        .toc-link:hover { color: var(--accent-primary); background: var(--accent-glow); }
         .toc-link.active {
             color: var(--accent-primary);
             background: var(--accent-glow);
@@ -264,34 +275,17 @@
             font-weight: 600;
         }
 
-        .toc-empty {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            padding: 10px 0;
-            text-align: center;
-        }
-
         .main-content {
             flex: 1;
             min-width: 0;
-            max-width: 920px;
+            max-width: 940px;
         }
 
-        .container {
-            max-width: 100%;
-            margin: 0 auto;
-        }
+        .container { max-width: 100%; margin: 0 auto; }
 
-        /* 侧边栏收起状态 */
-        body.toc-collapsed .sidebar-toc {
-            display: none;
-        }
+        body.toc-collapsed .sidebar-toc { display: none; }
+        body.toc-collapsed #expandTocBtn { display: inline-flex !important; }
 
-        body.toc-collapsed #expandTocBtn {
-            display: inline-flex !important;
-        }
-
-        /* 移动端/小屏幕样式 */
         .mobile-toc-toggle {
             display: none;
             position: fixed;
@@ -332,384 +326,460 @@
                 padding: 16px;
                 background: var(--bg-color);
             }
-
-            .sidebar-toc.open {
-                left: 0;
-                box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2);
-            }
-
-            .mobile-toc-toggle {
-                display: inline-flex;
-            }
-
-            body.toc-drawer-open .toc-backdrop {
-                display: block;
-            }
-
-            #expandTocBtn {
-                display: none !important;
-            }
+            .sidebar-toc.open { left: 0; box-shadow: 4px 0 24px rgba(0, 0, 0, 0.2); }
+            .mobile-toc-toggle { display: inline-flex; }
+            body.toc-drawer-open .toc-backdrop { display: block; }
+            #expandTocBtn { display: none !important; }
         }
 
         .top-bar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 24px;
+            margin-bottom: 28px;
             flex-wrap: wrap;
             gap: 12px;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
         }
 
-        .nav-links {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
+        .nav-links { display: flex; gap: 10px; align-items: center; }
 
-        .nav-btn {
+        .nav-btn, .theme-switch-btn {
             background-color: var(--surface-color);
             color: var(--text-secondary);
             border: 1px solid var(--border-color);
             padding: 5px 12px;
-            border-radius: 6px;
-            font-size: 0.85rem;
+            border-radius: 4px;
+            font-size: 0.84rem;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 4px;
+            gap: 5px;
             cursor: pointer;
+            font-weight: 500;
         }
 
-        .nav-btn:hover {
+        .nav-btn:hover, .theme-switch-btn:hover {
             color: var(--accent-primary);
             border-color: var(--accent-primary);
         }
 
-        .theme-switch-btn {
-            background-color: var(--toggle-bg);
+        /* --- wdkns-skills Titlepage 风格头部与元数据框 --- */
+        .lecture-titlepage {
+            text-align: center;
+            padding: 28px 16px 32px;
+            margin-bottom: 36px;
+            border-bottom: 1.5px solid var(--border-color);
+        }
+
+        .lecture-series-tag {
+            font-size: 1.05rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+            margin-bottom: 16px;
+        }
+
+        .lecture-main-title {
+            font-size: 2.2rem;
+            font-weight: 800;
             color: var(--text-primary);
-            border: 1px solid var(--border-color);
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
+            line-height: 1.35;
+            margin-bottom: 14px;
+            border: none;
+            padding: 0;
+        }
+
+        .lecture-subtitle {
+            font-size: 1.22rem;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
             font-weight: 500;
         }
 
-        .theme-switch-btn:hover {
-            opacity: 0.9;
+        .lecture-author-date {
+            font-size: 0.96rem;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+            line-height: 1.7;
         }
 
-        header {
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 24px;
-            margin-bottom: 36px;
+        .lecture-meta-box {
+            max-width: 840px;
+            margin: 0 auto;
+            text-align: left;
+            background-color: var(--meta-box-bg);
+            border: 1.5px solid var(--meta-box-frame);
+            padding: 16px 22px;
+            font-size: 0.92rem;
+            line-height: 1.75;
+            border-radius: 1px;
         }
 
+        .lecture-meta-row {
+            margin-bottom: 4px;
+        }
+        .lecture-meta-row:last-child {
+            margin-bottom: 0;
+        }
+
+        /* --- 章节标题排版 (模拟 LaTeX \section / \subsection) --- */
         h1, h2, h3, h4, h5, h6 {
-            scroll-margin-top: 36px;
+            scroll-margin-top: 32px;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
         }
 
         h1 {
-            font-size: 2.1rem;
+            font-size: 2.05rem;
             color: var(--text-primary);
-            margin-bottom: 12px;
+            margin-bottom: 16px;
             line-height: 1.35;
             font-weight: 700;
-            letter-spacing: -0.3px;
         }
 
         h2 {
-            font-size: 1.45rem;
-            margin-top: 42px;
+            font-size: 1.5rem;
+            margin-top: 48px;
             margin-bottom: 18px;
+            padding-bottom: 8px;
             color: var(--text-primary);
-            border-left: 4px solid var(--accent-primary);
-            padding-left: 14px;
-            font-weight: 600;
+            border-bottom: 1.5px solid var(--border-color);
+            font-weight: 700;
         }
 
         h3 {
-            font-size: 1.15rem;
-            margin-top: 24px;
+            font-size: 1.18rem;
+            margin-top: 28px;
             margin-bottom: 12px;
             color: var(--text-primary);
-            font-weight: 600;
+            font-weight: 700;
         }
 
         h4 {
-            font-size: 1.02rem;
-            margin-top: 18px;
+            font-size: 1.03rem;
+            margin-top: 20px;
             margin-bottom: 10px;
-            color: var(--accent-primary);
-            font-weight: 600;
-        }
-
-        h5, h6 {
-            font-size: 0.95rem;
-            margin-top: 14px;
-            margin-bottom: 8px;
             color: var(--text-primary);
-            font-weight: 600;
+            font-weight: 700;
         }
 
         p {
-            margin-bottom: 18px;
+            margin-bottom: 16px;
             color: var(--text-primary);
+            text-align: justify;
         }
 
         ul, ol {
             margin-bottom: 18px;
-            padding-left: 24px;
+            padding-left: 26px;
         }
 
         li {
-            margin-bottom: 8px;
+            margin-bottom: 7px;
             color: var(--text-primary);
         }
 
+        /* --- wdkns-skills tcolorbox 四大高亮框 --- */
+        .tcolorbox {
+            margin: 24px 0;
+            border-radius: 1px; /* sharp corners */
+            position: relative;
+        }
+
+        .tcolorbox-title {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+            font-weight: 700;
+            font-size: 0.96rem;
+            line-height: 1.4;
+        }
+
+        .tcolorbox-body {
+            padding: 14px 18px;
+            font-size: 0.96rem;
+            line-height: 1.8;
+        }
+
+        .tcolorbox-body p:last-child,
+        .tcolorbox-body ul:last-child,
+        .tcolorbox-body ol:last-child {
+            margin-bottom: 0;
+        }
+
+        /* 1. importantbox: 黄底黄框，顶部通栏黑字粗体标题 */
+        .tcolorbox-important {
+            background-color: var(--tcb-imp-bg);
+            border: 1.5px solid var(--tcb-imp-frame);
+        }
+        .tcolorbox-important > .tcolorbox-title {
+            background-color: var(--tcb-imp-title-bg);
+            color: var(--tcb-imp-title-fg);
+            padding: 6px 16px;
+        }
+
+        /* 2. knowledgebox: 蓝底蓝框，左上角悬浮标签式标题 (attach boxed title to top left) */
+        .tcolorbox-knowledge {
+            background-color: var(--tcb-know-bg);
+            border: 1.5px solid var(--tcb-know-frame);
+            margin-top: 32px;
+        }
+        .tcolorbox-knowledge > .tcolorbox-title {
+            display: inline-block;
+            background-color: var(--tcb-know-title-bg);
+            color: var(--tcb-know-title-fg);
+            padding: 3px 14px;
+            margin-top: -14px;
+            margin-left: 12px;
+            transform: translateY(-50%);
+            margin-bottom: -10px;
+            border-radius: 1px;
+        }
+        .tcolorbox-knowledge > .tcolorbox-body {
+            padding-top: 6px;
+        }
+
+        /* 3. warningbox: 红底红框，顶部通栏白字粗体标题 */
+        .tcolorbox-warning {
+            background-color: var(--tcb-warn-bg);
+            border: 1.5px solid var(--tcb-warn-frame);
+        }
+        .tcolorbox-warning > .tcolorbox-title {
+            background-color: var(--tcb-warn-title-bg);
+            color: var(--tcb-warn-title-fg);
+            padding: 6px 16px;
+        }
+
+        /* 4. dialoguebox: 绿底绿框，顶部通栏白字粗体标题 */
+        .tcolorbox-dialogue {
+            background-color: var(--tcb-dial-bg);
+            border: 1.5px solid var(--tcb-dial-frame);
+        }
+        .tcolorbox-dialogue > .tcolorbox-title {
+            background-color: var(--tcb-dial-title-bg);
+            color: var(--tcb-dial-title-fg);
+            padding: 6px 16px;
+        }
+
+        /* --- 公式块与符号解释列表 --- */
+        .math-display-block {
+            text-align: center;
+            margin: 18px 0 14px;
+            padding: 6px 0;
+            font-size: 1.08em;
+            overflow-x: auto;
+        }
+
+        /* --- 配图与底部源码溯源角标 (Figure + Provenance) --- */
+        .lecture-figure {
+            margin: 34px 0 38px;
+            text-align: center;
+            clear: both;
+        }
+
+        .lecture-figure img,
+        .lecture-figure svg {
+            max-width: 100%;
+            height: auto;
+            border-radius: 2px;
+            display: block;
+            margin: 0 auto 14px;
+        }
+
+        .lecture-figure foreignObject {
+            overflow: visible;
+        }
+
+        .lecture-figure .svg-latex {
+            font-family: "Noto Serif CJK SC", "Times New Roman", -apple-system, "PingFang SC", serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        .lecture-figure .svg-latex mjx-container {
+            margin: 0 !important;
+            padding: 0 !important;
+            display: inline-block !important;
+            color: inherit !important;
+        }
+
+        .lecture-figcaption {
+            font-size: 0.95rem;
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            line-height: 1.5;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+        }
+
+        .lecture-fig-provenance {
+            font-size: 0.81rem;
+            color: var(--text-muted);
+            line-height: 1.45;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+        }
+
+        /* --- 代码块 (LaTeX lstlisting 风格：带行号、单线框、底部 Listing Caption 与源码溯源) --- */
         code {
             font-family: "JetBrains Mono", Consolas, Menlo, Monaco, monospace;
             background-color: var(--code-bg);
             color: var(--code-text);
-            padding: 2px 7px;
-            border-radius: 4px;
-            font-size: 0.88em;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.87em;
+        }
+
+        .lstlisting-wrapper {
+            margin: 24px 0;
         }
 
         .code-block {
             background-color: var(--pre-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            margin: 24px 0;
+            border: 1px solid var(--meta-box-frame);
+            border-radius: 1px;
             overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
         }
 
         .code-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 7px 14px;
+            padding: 5px 12px;
             background-color: var(--surface-color);
             border-bottom: 1px solid var(--border-color);
-            font-size: 0.78rem;
+            font-size: 0.76rem;
+            font-family: "JetBrains Mono", Consolas, monospace;
             user-select: none;
         }
 
         .code-lang {
-            font-family: "JetBrains Mono", Consolas, Menlo, Monaco, monospace;
             font-weight: 700;
-            color: var(--accent-primary);
-            letter-spacing: 0.5px;
+            color: var(--text-secondary);
         }
 
         .copy-btn {
             background: transparent;
             border: 1px solid var(--border-color);
-            border-radius: 5px;
+            border-radius: 3px;
             color: var(--text-muted);
-            padding: 3px 9px;
-            font-size: 0.78rem;
+            padding: 2px 8px;
+            font-size: 0.75rem;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            transition: all 0.2s;
+            gap: 4px;
         }
 
         .copy-btn:hover {
             color: var(--accent-primary);
             border-color: var(--accent-primary);
-            background: var(--surface-elevated);
         }
 
-        .copy-btn.copied {
-            color: #2b5133;
-            border-color: #709775;
-            background: #e5ede3;
+        .code-table-wrap {
+            display: flex;
+            overflow-x: auto;
+            padding: 12px 0;
         }
 
-        :root[data-theme="twilight"] .copy-btn.copied {
-            color: #8bbfa8;
-            border-color: #4d7a68;
-            background: #202b28;
+        .line-numbers {
+            user-select: none;
+            text-align: right;
+            padding: 0 12px 0 10px;
+            color: var(--text-muted);
+            font-family: "JetBrains Mono", Consolas, monospace;
+            font-size: 0.8rem;
+            line-height: 1.65;
+            border-right: 1px solid var(--border-color);
+            flex-shrink: 0;
         }
 
         pre {
             background-color: transparent;
             border: none;
-            padding: 16px 18px;
-            overflow-x: auto;
+            padding: 0 16px;
             margin: 0;
             line-height: 1.65;
+            flex: 1;
+            min-width: 0;
         }
 
         pre code {
             background-color: transparent;
             color: var(--pre-text);
             padding: 0;
-            border-radius: 0;
-            font-size: 0.9rem;
-            font-family: "JetBrains Mono", Consolas, Menlo, Monaco, monospace;
+            font-size: 0.88rem;
+            font-family: "JetBrains Mono", Consolas, monospace;
             display: block;
         }
 
-        /* 语法高亮样式 (米纸主题 Parchment) */
-        :root[data-theme="parchment"] .hljs-comment,
-        :root[data-theme="parchment"] .hljs-quote {
-            color: #798696;
-            font-style: italic;
-        }
-        :root[data-theme="parchment"] .hljs-keyword,
-        :root[data-theme="parchment"] .hljs-selector-tag {
-            color: #b83a21;
-            font-weight: 600;
-        }
-        :root[data-theme="parchment"] .hljs-type,
-        :root[data-theme="parchment"] .hljs-class .hljs-title {
-            color: #8d3a2b;
-            font-weight: 600;
-        }
-        :root[data-theme="parchment"] .hljs-string,
-        :root[data-theme="parchment"] .hljs-addition {
-            color: #2c7a3f;
-        }
-        :root[data-theme="parchment"] .hljs-number,
-        :root[data-theme="parchment"] .hljs-literal {
-            color: #a35d28;
-            font-weight: 600;
-        }
-        :root[data-theme="parchment"] .hljs-title,
-        :root[data-theme="parchment"] .hljs-function {
-            color: #1e3863;
-            font-weight: 600;
-        }
-        :root[data-theme="parchment"] .hljs-built_in,
-        :root[data-theme="parchment"] .hljs-symbol {
-            color: #2b5133;
-        }
-        :root[data-theme="parchment"] .hljs-meta {
-            color: #704b12;
-        }
-        :root[data-theme="parchment"] .hljs-variable,
-        :root[data-theme="parchment"] .hljs-template-variable {
-            color: #2d3748;
+        .lstlisting-caption {
+            text-align: center;
+            font-size: 0.92rem;
+            color: var(--text-primary);
+            margin-top: 8px;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
         }
 
-        /* 语法高亮样式 (暮色主题 Twilight) */
-        :root[data-theme="twilight"] .hljs-comment,
-        :root[data-theme="twilight"] .hljs-quote {
-            color: #636e7b;
-            font-style: italic;
+        .lstlisting-provenance {
+            text-align: center;
+            font-size: 0.79rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
         }
-        :root[data-theme="twilight"] .hljs-keyword,
-        :root[data-theme="twilight"] .hljs-selector-tag {
-            color: #e09f67;
-            font-weight: 600;
-        }
-        :root[data-theme="twilight"] .hljs-type,
-        :root[data-theme="twilight"] .hljs-class .hljs-title {
-            color: #e5c07b;
-            font-weight: 600;
-        }
-        :root[data-theme="twilight"] .hljs-string,
-        :root[data-theme="twilight"] .hljs-addition {
-            color: #98c379;
-        }
-        :root[data-theme="twilight"] .hljs-number,
-        :root[data-theme="twilight"] .hljs-literal {
-            color: #d19a66;
-            font-weight: 600;
-        }
-        :root[data-theme="twilight"] .hljs-title,
-        :root[data-theme="twilight"] .hljs-function {
-            color: #61afef;
-            font-weight: 600;
-        }
-        :root[data-theme="twilight"] .hljs-built_in,
-        :root[data-theme="twilight"] .hljs-symbol {
-            color: #56b6c2;
-        }
-        :root[data-theme="twilight"] .hljs-meta {
-            color: #be5046;
-        }
-        :root[data-theme="twilight"] .hljs-variable,
-        :root[data-theme="twilight"] .hljs-template-variable {
-            color: #abb2bf;
-        }
+
+        /* 语法高亮样式 */
+        :root[data-theme="paper"] .hljs-comment,
+        :root[data-theme="parchment"] .hljs-comment { color: #2e7d32; font-style: italic; }
+        :root[data-theme="paper"] .hljs-keyword,
+        :root[data-theme="parchment"] .hljs-keyword { color: #1d4ed8; font-weight: 600; }
+        :root[data-theme="paper"] .hljs-type,
+        :root[data-theme="parchment"] .hljs-type { color: #0f766e; font-weight: 600; }
+        :root[data-theme="paper"] .hljs-string,
+        :root[data-theme="parchment"] .hljs-string { color: #b91c1c; }
+        :root[data-theme="paper"] .hljs-number,
+        :root[data-theme="parchment"] .hljs-number { color: #b45309; }
+        :root[data-theme="paper"] .hljs-title,
+        :root[data-theme="parchment"] .hljs-title { color: #1e3a8a; font-weight: 600; }
+        :root[data-theme="paper"] .hljs-meta,
+        :root[data-theme="parchment"] .hljs-meta { color: #6d28d9; }
+
+        :root[data-theme="twilight"] .hljs-comment { color: #636e7b; font-style: italic; }
+        :root[data-theme="twilight"] .hljs-keyword { color: #e09f67; font-weight: 600; }
+        :root[data-theme="twilight"] .hljs-type { color: #e5c07b; font-weight: 600; }
+        :root[data-theme="twilight"] .hljs-string { color: #98c379; }
+        :root[data-theme="twilight"] .hljs-number { color: #d19a66; }
+        :root[data-theme="twilight"] .hljs-title { color: #61afef; font-weight: 600; }
 
         blockquote {
             background-color: var(--surface-color);
-            border-left: 4px solid var(--border-color);
-            padding: 14px 18px;
-            border-radius: 0 6px 6px 0;
-            margin: 20px 0;
+            border-left: 3.5px solid var(--border-color);
+            padding: 12px 18px;
+            margin: 18px 0;
             color: var(--text-secondary);
         }
 
-        .callout {
-            border-radius: 8px;
-            padding: 18px 22px;
-            margin: 24px 0;
-        }
-
-        .callout.callout-note {
-            background-color: var(--callout-note-bg);
-            border-left: 4px solid var(--callout-note-border);
-        }
-
-        .callout.callout-note .callout-title {
-            color: var(--callout-note-text);
-        }
-
-        .callout.callout-warning {
-            background-color: var(--callout-warn-bg);
-            border-left: 4px solid var(--callout-warn-border);
-        }
-
-        .callout.callout-warning .callout-title {
-            color: var(--callout-warn-text);
-        }
-
-        .callout.callout-important {
-            background-color: var(--callout-imp-bg);
-            border-left: 4px solid var(--callout-imp-border);
-        }
-
-        .callout.callout-important .callout-title {
-            color: var(--callout-imp-text);
-        }
-
-        .callout-title {
-            font-weight: 600;
-            margin-bottom: 10px;
-            font-size: 1.02rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
+        /* 学术三线表风格 (booktabs) */
         table {
             width: 100%;
             border-collapse: collapse;
             margin: 24px 0;
-            font-size: 0.94rem;
+            font-size: 0.93rem;
+            border-top: 2px solid var(--text-primary);
+            border-bottom: 2px solid var(--text-primary);
         }
 
         th, td {
-            border: 1px solid var(--border-color);
-            padding: 12px 16px;
+            padding: 10px 14px;
             text-align: left;
+            border-bottom: 1px solid var(--border-color);
         }
 
         th {
             background-color: var(--table-header);
             color: var(--text-primary);
-            font-weight: 600;
+            font-weight: 700;
+            border-bottom: 1.5px solid var(--text-primary);
         }
 
         tr:nth-child(even) {
@@ -719,11 +789,11 @@
         .source-meta {
             background-color: var(--surface-color);
             border: 1px dashed var(--border-color);
-            border-radius: 8px;
+            border-radius: 4px;
             padding: 12px 16px;
-            font-size: 0.85rem;
+            font-size: 0.84rem;
             color: var(--text-muted);
-            margin-top: 40px;
+            margin-top: 44px;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -732,37 +802,38 @@
         }
 
         footer {
-            margin-top: 40px;
-            padding-top: 24px;
+            margin-top: 32px;
+            padding-top: 20px;
             border-top: 1px solid var(--border-color);
             color: var(--text-muted);
-            font-size: 0.88rem;
+            font-size: 0.85rem;
             text-align: center;
+        }
+
+        @media print {
+            .sidebar-toc, .top-bar, .mobile-toc-toggle, .source-meta, .copy-btn {
+                display: none !important;
+            }
+            body { padding: 0; font-size: 11pt; }
+            .main-content { max-width: 100%; }
+            .tcolorbox, .lecture-figure, .lstlisting-wrapper {
+                break-inside: avoid;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- 移动端大纲浮动按钮与背景遮罩 -->
     <button class="mobile-toc-toggle" onclick="toggleMobileToc()" id="mobileTocBtn" title="展开/收起目录大纲">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="8" y1="6" x2="21" y2="6"></line>
-            <line x1="8" y1="12" x2="21" y2="12"></line>
-            <line x1="8" y1="18" x2="21" y2="18"></line>
-            <line x1="3" y1="6" x2="3.01" y2="6"></line>
-            <line x1="3" y1="12" x2="3.01" y2="12"></line>
-            <line x1="3" y1="18" x2="3.01" y2="18"></line>
-        </svg>
         <span>目录</span>
     </button>
     <div class="toc-backdrop" onclick="toggleMobileToc()"></div>
 
     <div class="layout-wrapper">
-        <!-- 左侧大纲预览 -->
         <aside class="sidebar-toc" id="sidebarToc">
             <div class="toc-card">
                 <div class="toc-header">
                     <div class="toc-title">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="8" y1="6" x2="21" y2="6"></line>
                             <line x1="8" y1="12" x2="21" y2="12"></line>
                             <line x1="8" y1="18" x2="21" y2="18"></line>
@@ -770,7 +841,7 @@
                             <line x1="3" y1="12" x2="3.01" y2="12"></line>
                             <line x1="3" y1="18" x2="3.01" y2="18"></line>
                         </svg>
-                        <span>大纲预览</span>
+                        <span>目录大纲</span>
                     </div>
                     <button class="toc-action-btn" onclick="toggleDesktopToc()" title="收起大纲">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -784,24 +855,25 @@
             </div>
         </aside>
 
-        <!-- 主内容区 -->
         <main class="main-content">
             <div class="container">
                 <div class="top-bar">
                     <div class="nav-links">
-                        <button class="nav-btn" id="expandTocBtn" onclick="toggleDesktopToc()" style="display: none;" title="展开大纲侧边栏">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="9 18 15 12 9 6"></polyline>
-                            </svg>
-                            <span>显示大纲</span>
+                        <button class="nav-btn" id="expandTocBtn" onclick="toggleDesktopToc()" style="display: none;">
+                            <span>显示目录</span>
                         </button>
-                        <a href="../index.html" class="nav-btn">目录总览</a>
+                        <a href="../index.html" class="nav-btn">← 讲义总目录</a>
                         <span style="color: var(--border-color)">|</span>
-                        <span style="font-size: 0.88rem; color: var(--text-muted);">{{SOURCE_REL_PATH}}</span>
+                        <span style="font-size: 0.84rem; color: var(--text-muted);">{{SOURCE_REL_PATH}}</span>
                     </div>
-                    <button class="theme-switch-btn" onclick="toggleTheme()" id="themeBtn">
-                        切换暮色
-                    </button>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="theme-switch-btn" onclick="window.print()" title="导出/打印为 LaTeX 风格 PDF">
+                            🖨️ 导出 PDF
+                        </button>
+                        <button class="theme-switch-btn" onclick="toggleTheme()" id="themeBtn">
+                            主题：LaTeX 白底
+                        </button>
+                    </div>
                 </div>
 
                 <article class="markdown-body">
@@ -810,46 +882,46 @@
 
                 <div class="source-meta">
                     <span>Markdown 源文件：<code>{{SOURCE_REL_PATH}}</code></span>
-                    <span>修改 Markdown 后运行 <code>build_notes.bat</code> 即可同步更新</span>
+                    <span>渲染规范：<code>wdkns-skills (codebase-render-notes &amp; tensor-formula-viz)</code></span>
                 </div>
 
                 <footer>
-                    <p>1Cat-vLLM 源码精读与算子开发指南 · <a href="../index.html" style="color: inherit;">返回笔记首页</a></p>
+                    <p>1Cat-vLLM 源码精读与算子开发讲义 · <a href="../index.html" style="color: inherit;">返回笔记首页</a></p>
                 </footer>
             </div>
         </main>
     </div>
 
     <script>
+        const THEME_ORDER = ['paper', 'parchment', 'twilight'];
+        const THEME_LABELS = {
+            'paper': '主题：LaTeX 白底',
+            'parchment': '主题：暖阳米纸',
+            'twilight': '主题：薄暮夜读'
+        };
+
         function toggleTheme() {
             const html = document.documentElement;
-            const current = html.getAttribute('data-theme');
+            const current = html.getAttribute('data-theme') || 'paper';
+            const nextIdx = (THEME_ORDER.indexOf(current) + 1) % THEME_ORDER.length;
+            const next = THEME_ORDER[nextIdx];
+            html.setAttribute('data-theme', next);
             const btn = document.getElementById('themeBtn');
-            if (current === 'twilight') {
-                html.setAttribute('data-theme', 'parchment');
-                btn.innerHTML = '切换暮色';
-                localStorage.setItem('doc-theme', 'parchment');
-            } else {
-                html.setAttribute('data-theme', 'twilight');
-                btn.innerHTML = '切换米纸';
-                localStorage.setItem('doc-theme', 'twilight');
-            }
+            if (btn) btn.innerHTML = THEME_LABELS[next];
+            localStorage.setItem('doc-theme', next);
         }
 
-        // 侧边栏收起/展开
         function toggleDesktopToc() {
             const isCollapsed = document.body.classList.toggle('toc-collapsed');
             localStorage.setItem('toc-collapsed', isCollapsed ? 'true' : 'false');
         }
 
-        // 移动端侧边栏切换
         function toggleMobileToc() {
             const sidebar = document.getElementById('sidebarToc');
             const isOpen = sidebar.classList.toggle('open');
             document.body.classList.toggle('toc-drawer-open', isOpen);
         }
 
-        // 点击大纲链接时（在窄屏/抽屉模式下）自动收起抽屉
         document.addEventListener('click', function(e) {
             const link = e.target.closest('.toc-link');
             if (link && window.innerWidth <= 1120) {
@@ -859,21 +931,15 @@
             }
         });
 
-        // 滚动监听与大纲高亮 (Scroll-Spy)
         function initScrollSpy() {
             const links = Array.from(document.querySelectorAll('.toc-link'));
             if (!links.length) return;
-
             const targets = links.map(link => {
                 const href = link.getAttribute('href');
                 if (!href || !href.startsWith('#')) return null;
                 const id = decodeURIComponent(href.slice(1));
-                return {
-                    link: link,
-                    element: document.getElementById(id)
-                };
+                return { link: link, element: document.getElementById(id) };
             }).filter(item => item && item.element !== null);
-
             if (!targets.length) return;
 
             function onScroll() {
@@ -888,21 +954,16 @@
                 }
                 targets.forEach(item => {
                     if (item === currentItem) {
-                        if (!item.link.classList.contains('active')) {
-                            item.link.classList.add('active');
-                            item.link.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-                        }
+                        item.link.classList.add('active');
                     } else {
                         item.link.classList.remove('active');
                     }
                 });
             }
-
             window.addEventListener('scroll', onScroll, { passive: true });
             onScroll();
         }
 
-        // 代码一键复制
         function copyCode(btn) {
             const block = btn.closest('.code-block');
             const code = block ? block.querySelector('pre code') : null;
@@ -910,25 +971,11 @@
             const text = code.innerText;
             navigator.clipboard.writeText(text).then(() => {
                 const origHtml = btn.innerHTML;
-                btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> <span>已复制!</span>';
-                btn.classList.add('copied');
-                setTimeout(() => {
-                    btn.innerHTML = origHtml;
-                    btn.classList.remove('copied');
-                }, 2000);
-            }).catch(() => {
-                const ta = document.createElement('textarea');
-                ta.value = text;
-                document.body.appendChild(ta);
-                ta.select();
-                document.execCommand('copy');
-                document.body.removeChild(ta);
                 btn.innerHTML = '<span>已复制!</span>';
-                setTimeout(() => { btn.innerHTML = '<span>复制</span>'; }, 2000);
+                setTimeout(() => { btn.innerHTML = origHtml; }, 1800);
             });
         }
 
-        // 初始化代码语法高亮
         function initHighlight() {
             if (window.hljs) {
                 try {
@@ -942,19 +989,15 @@
 
         (function() {
             const saved = localStorage.getItem('doc-theme');
-            if (saved) {
+            if (saved && THEME_LABELS[saved]) {
                 document.documentElement.setAttribute('data-theme', saved);
                 const btn = document.getElementById('themeBtn');
-                if (btn) {
-                    btn.innerHTML = saved === 'twilight' ? '切换米纸' : '切换暮色';
-                }
+                if (btn) btn.innerHTML = THEME_LABELS[saved];
             }
-
             const collapsed = localStorage.getItem('toc-collapsed');
             if (collapsed === 'true') {
                 document.body.classList.add('toc-collapsed');
             }
-
             initScrollSpy();
             initHighlight();
         })();

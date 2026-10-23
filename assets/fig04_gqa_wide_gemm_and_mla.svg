@@ -1,0 +1,411 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 665" width="100%">
+
+  <defs>
+    <style>
+      .fig-bg { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1; }
+      .stage-title { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 13px; font-weight: 700; fill: #0f172a; }
+      .op-node { fill: #f8fafc; stroke: #64748b; stroke-width: 1.2; }
+      .op-text { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 11.5px; font-weight: 700; fill: #1e293b; text-anchor: middle; }
+      .note-card { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1; rx: 3; }
+      .note-title { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 11.5px; font-weight: 700; fill: #0f172a; }
+      .ledger-box { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1; rx: 2; }
+      .ledger-key { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 12px; font-weight: 700; fill: #0f172a; }
+      .sig-line { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 11px; fill: #94a3b8; text-anchor: middle; }
+      .bracket { fill: none; stroke: #475569; stroke-width: 1.3; stroke-linecap: square; }
+      .arrow { stroke: #64748b; stroke-width: 1.3; fill: none; marker-end: url(#arrowhead); }
+      .arrow-accent { stroke: #c95b5b; stroke-width: 1.4; fill: none; marker-end: url(#arrowhead-red); }
+      .arrow-teal { stroke: #4f8fa5; stroke-width: 1.4; fill: none; marker-end: url(#arrowhead-teal); }
+    </style>
+    <marker id="arrowhead" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto">
+      <polygon points="0 0, 7 2.5, 0 5" fill="#64748b" />
+    </marker>
+    <marker id="arrowhead-red" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto">
+      <polygon points="0 0, 7 2.5, 0 5" fill="#c95b5b" />
+    </marker>
+    <marker id="arrowhead-teal" markerWidth="7" markerHeight="5" refX="6" refY="2.5" orient="auto">
+      <polygon points="0 0, 7 2.5, 0 5" fill="#4f8fa5" />
+    </marker>
+  </defs>
+
+<rect class="fig-bg" x="1" y="1" width="978" height="663" rx="4"/>
+<foreignObject x="20.0" y="6.0" width="940.0" height="32.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:13.8px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\displaystyle \text{GQA-Packed: } \left[\mathbf{Q}_1;\, \dots;\, \mathbf{Q}_G\right]_{(G\cdot M)\times d} \mathbf{K}^\top_{d\times N} \to \mathbf{S}_{(G\cdot M)\times N}, \qquad \text{MLA Absorbed: } \mathbf{q}_i \mathbf{K}_i^\top = \mathbf{q}_i \left(\mathbf{W}_i^{UK}\mathbf{c}_t^{KV}\right)^\top = \left(\mathbf{q}_i \mathbf{W}_i^{UK}\right)\!\left(\mathbf{c}_t^{KV}\right)^\top = \tilde{\mathbf{q}}_i \left(\mathbf{c}_t^{KV}\right)^\top$</span></div>
+</foreignObject>
+<foreignObject x="20.0" y="38.0" width="940.0" height="22.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12px;color:#475569;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>—— 两条正交的 KV 访存突围路线：(a) 1Cat-vLLM GQA 行维度打包喂饱 SM70 Tensor Core；(b) MLA 低秩潜向量缓存 + 升维矩阵结合律吸收</span></div>
+</foreignObject>
+<line x1="24" y1="64" x2="956" y2="64" stroke="#e2e8f0" stroke-width="1"/>
+<foreignObject x="28.0" y="70.0" width="860.0" height="24.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;font-size:12.8px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:left;"><span><strong>(a) 1Cat-vLLM GQA-Packed Wide GEMM (<code>prefill.cu:L455</code>)：将同组 $G=6$ 个 Query 头沿行轴拼成宽矩阵 ($\texttt{kRows} = 6Q$)</strong></span></div>
+</foreignObject>
+<rect x="52.0" y="102.0" width="8.5" height="8.5" rx="1" fill="#f8d6ba"/>
+<rect x="62.0" y="102.0" width="8.5" height="8.5" rx="1" fill="#f3b787"/>
+<rect x="72.0" y="102.0" width="8.5" height="8.5" rx="1" fill="#ee995b"/>
+<rect x="82.0" y="102.0" width="8.5" height="8.5" rx="1" fill="#f8d6ba"/>
+<rect x="92.0" y="102.0" width="8.5" height="8.5" rx="1" fill="#f3b787"/>
+<rect x="102.0" y="102.0" width="8.5" height="8.5" rx="1" fill="#ee995b"/>
+<foreignObject x="16.0" y="98.0" width="30.0" height="16.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:9.8px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathbf{Q}_0$</span></div>
+</foreignObject>
+<rect x="52.0" y="117.5" width="8.5" height="8.5" rx="1" fill="#f8d6ba"/>
+<rect x="62.0" y="117.5" width="8.5" height="8.5" rx="1" fill="#f3b787"/>
+<rect x="72.0" y="117.5" width="8.5" height="8.5" rx="1" fill="#ee995b"/>
+<rect x="82.0" y="117.5" width="8.5" height="8.5" rx="1" fill="#f8d6ba"/>
+<rect x="92.0" y="117.5" width="8.5" height="8.5" rx="1" fill="#f3b787"/>
+<rect x="102.0" y="117.5" width="8.5" height="8.5" rx="1" fill="#ee995b"/>
+<foreignObject x="16.0" y="113.5" width="30.0" height="16.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:9.8px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathbf{Q}_1$</span></div>
+</foreignObject>
+<rect x="52.0" y="133.0" width="8.5" height="8.5" rx="1" fill="#f8d6ba"/>
+<rect x="62.0" y="133.0" width="8.5" height="8.5" rx="1" fill="#f3b787"/>
+<rect x="72.0" y="133.0" width="8.5" height="8.5" rx="1" fill="#ee995b"/>
+<rect x="82.0" y="133.0" width="8.5" height="8.5" rx="1" fill="#f8d6ba"/>
+<rect x="92.0" y="133.0" width="8.5" height="8.5" rx="1" fill="#f3b787"/>
+<rect x="102.0" y="133.0" width="8.5" height="8.5" rx="1" fill="#ee995b"/>
+<foreignObject x="16.0" y="129.0" width="30.0" height="16.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:9.8px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathbf{Q}_2$</span></div>
+</foreignObject>
+<rect x="52.0" y="148.5" width="8.5" height="8.5" rx="1" fill="#f8d6ba"/>
+<rect x="62.0" y="148.5" width="8.5" height="8.5" rx="1" fill="#f3b787"/>
+<rect x="72.0" y="148.5" width="8.5" height="8.5" rx="1" fill="#ee995b"/>
+<rect x="82.0" y="148.5" width="8.5" height="8.5" rx="1" fill="#f8d6ba"/>
+<rect x="92.0" y="148.5" width="8.5" height="8.5" rx="1" fill="#f3b787"/>
+<rect x="102.0" y="148.5" width="8.5" height="8.5" rx="1" fill="#ee995b"/>
+<foreignObject x="16.0" y="144.5" width="30.0" height="16.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:9.8px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathbf{Q}_3$</span></div>
+</foreignObject>
+<rect x="52.0" y="164.0" width="8.5" height="8.5" rx="1" fill="#f8d6ba"/>
+<rect x="62.0" y="164.0" width="8.5" height="8.5" rx="1" fill="#f3b787"/>
+<rect x="72.0" y="164.0" width="8.5" height="8.5" rx="1" fill="#ee995b"/>
+<rect x="82.0" y="164.0" width="8.5" height="8.5" rx="1" fill="#f8d6ba"/>
+<rect x="92.0" y="164.0" width="8.5" height="8.5" rx="1" fill="#f3b787"/>
+<rect x="102.0" y="164.0" width="8.5" height="8.5" rx="1" fill="#ee995b"/>
+<foreignObject x="16.0" y="160.0" width="30.0" height="16.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:9.8px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathbf{Q}_4$</span></div>
+</foreignObject>
+<rect x="52.0" y="179.5" width="8.5" height="8.5" rx="1" fill="#f8d6ba"/>
+<rect x="62.0" y="179.5" width="8.5" height="8.5" rx="1" fill="#f3b787"/>
+<rect x="72.0" y="179.5" width="8.5" height="8.5" rx="1" fill="#ee995b"/>
+<rect x="82.0" y="179.5" width="8.5" height="8.5" rx="1" fill="#f8d6ba"/>
+<rect x="92.0" y="179.5" width="8.5" height="8.5" rx="1" fill="#f3b787"/>
+<rect x="102.0" y="179.5" width="8.5" height="8.5" rx="1" fill="#ee995b"/>
+<foreignObject x="16.0" y="175.5" width="30.0" height="16.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:9.8px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathbf{Q}_5$</span></div>
+</foreignObject>
+<foreignObject x="27.0" y="198.0" width="110.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12.5px;color:#0f172a;font-weight:700;line-height:1.32;white-space:nowrap;text-align:center;"><span>$6$ 个独立窄头</span></div>
+</foreignObject>
+<foreignObject x="17.0" y="220.0" width="130.0" height="18.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>各自读 KV $6$ 次 ($M$ 极窄)</span></div>
+</foreignObject>
+<line x1="118" y1="146" x2="184" y2="146" class="arrow-teal"/>
+<foreignObject x="118.0" y="120.0" width="66.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.5px;color:#334155;font-weight:700;line-height:1.32;white-space:nowrap;text-align:center;"><span>行轴 Pack</span></div>
+</foreignObject>
+<foreignObject x="113.0" y="150.0" width="76.0" height="18.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#0f766e;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$M_{\text{pack}} = 6Q$</span></div>
+</foreignObject>
+<rect x="194.0" y="102.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="207.0" y="102.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="220.0" y="102.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="233.0" y="102.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="246.0" y="102.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="259.0" y="102.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="194.0" y="117.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="207.0" y="117.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="220.0" y="117.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="233.0" y="117.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="246.0" y="117.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="259.0" y="117.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="194.0" y="132.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="207.0" y="132.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="220.0" y="132.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="233.0" y="132.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="246.0" y="132.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="259.0" y="132.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="194.0" y="147.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="207.0" y="147.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="220.0" y="147.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="233.0" y="147.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="246.0" y="147.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="259.0" y="147.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="194.0" y="162.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="207.0" y="162.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="220.0" y="162.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="233.0" y="162.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="246.0" y="162.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="259.0" y="162.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="194.0" y="177.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="207.0" y="177.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="220.0" y="177.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="233.0" y="177.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="246.0" y="177.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="259.0" y="177.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<path class="bracket" d="M 194.5 98.5 L 190.5 98.5 L 190.5 193.5 L 194.5 193.5"/>
+<path class="bracket" d="M 269.5 98.5 L 273.5 98.5 L 273.5 193.5 L 269.5 193.5"/>
+<foreignObject x="187.0" y="198.0" width="90.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12.8px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathbf{Q}_{\text{packed}}$</span></div>
+</foreignObject>
+<foreignObject x="189.0" y="220.0" width="86.0" height="18.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$(6Q \times 256)$</span></div>
+</foreignObject>
+<foreignObject x="275.0" y="138.0" width="22.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:14px;color:#1e293b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\times$</span></div>
+</foreignObject>
+<rect x="304.0" y="108.0" width="11" height="11" rx="1" fill="#b9d6e0"/>
+<rect x="317.0" y="108.0" width="11" height="11" rx="1" fill="#7fb3c5"/>
+<rect x="330.0" y="108.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="343.0" y="108.0" width="11" height="11" rx="1" fill="#b9d6e0"/>
+<rect x="356.0" y="108.0" width="11" height="11" rx="1" fill="#7fb3c5"/>
+<rect x="304.0" y="121.0" width="11" height="11" rx="1" fill="#7fb3c5"/>
+<rect x="317.0" y="121.0" width="11" height="11" rx="1" fill="#b9d6e0"/>
+<rect x="330.0" y="121.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="343.0" y="121.0" width="11" height="11" rx="1" fill="#7fb3c5"/>
+<rect x="356.0" y="121.0" width="11" height="11" rx="1" fill="#b9d6e0"/>
+<rect x="304.0" y="134.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="317.0" y="134.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="330.0" y="134.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="343.0" y="134.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="356.0" y="134.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="304.0" y="147.0" width="11" height="11" rx="1" fill="#b9d6e0"/>
+<rect x="317.0" y="147.0" width="11" height="11" rx="1" fill="#7fb3c5"/>
+<rect x="330.0" y="147.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="343.0" y="147.0" width="11" height="11" rx="1" fill="#b9d6e0"/>
+<rect x="356.0" y="147.0" width="11" height="11" rx="1" fill="#7fb3c5"/>
+<rect x="304.0" y="160.0" width="11" height="11" rx="1" fill="#7fb3c5"/>
+<rect x="317.0" y="160.0" width="11" height="11" rx="1" fill="#b9d6e0"/>
+<rect x="330.0" y="160.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="343.0" y="160.0" width="11" height="11" rx="1" fill="#7fb3c5"/>
+<rect x="356.0" y="160.0" width="11" height="11" rx="1" fill="#b9d6e0"/>
+<rect x="304.0" y="173.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="317.0" y="173.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="330.0" y="173.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="343.0" y="173.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="356.0" y="173.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<path class="bracket" d="M 304.5 104.5 L 300.5 104.5 L 300.5 187.5 L 304.5 187.5"/>
+<path class="bracket" d="M 366.5 104.5 L 370.5 104.5 L 370.5 187.5 L 366.5 187.5"/>
+<foreignObject x="290.5" y="198.0" width="90.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12.8px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathbf{K}_{\text{shared}}^\top$</span></div>
+</foreignObject>
+<foreignObject x="282.5" y="220.0" width="106.0" height="18.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$(256 \times N)$ 仅读 $1$ 次</span></div>
+</foreignObject>
+<line x1="378" y1="146" x2="418" y2="146" class="arrow"/>
+<rect x="428.0" y="102.0" width="11" height="13" rx="1" fill="#d1c7e3"/>
+<rect x="441.0" y="102.0" width="11" height="13" rx="1" fill="#d1c7e3"/>
+<rect x="454.0" y="102.0" width="11" height="13" rx="1" fill="#d1c7e3"/>
+<rect x="467.0" y="102.0" width="11" height="13" rx="1" fill="#d1c7e3"/>
+<rect x="480.0" y="102.0" width="11" height="13" rx="1" fill="#d1c7e3"/>
+<rect x="428.0" y="117.0" width="11" height="13" rx="1" fill="#ae9ecf"/>
+<rect x="441.0" y="117.0" width="11" height="13" rx="1" fill="#ae9ecf"/>
+<rect x="454.0" y="117.0" width="11" height="13" rx="1" fill="#ae9ecf"/>
+<rect x="467.0" y="117.0" width="11" height="13" rx="1" fill="#ae9ecf"/>
+<rect x="480.0" y="117.0" width="11" height="13" rx="1" fill="#ae9ecf"/>
+<rect x="428.0" y="132.0" width="11" height="13" rx="1" fill="#8a74b5"/>
+<rect x="441.0" y="132.0" width="11" height="13" rx="1" fill="#8a74b5"/>
+<rect x="454.0" y="132.0" width="11" height="13" rx="1" fill="#8a74b5"/>
+<rect x="467.0" y="132.0" width="11" height="13" rx="1" fill="#8a74b5"/>
+<rect x="480.0" y="132.0" width="11" height="13" rx="1" fill="#8a74b5"/>
+<rect x="428.0" y="147.0" width="11" height="13" rx="1" fill="#d1c7e3"/>
+<rect x="441.0" y="147.0" width="11" height="13" rx="1" fill="#d1c7e3"/>
+<rect x="454.0" y="147.0" width="11" height="13" rx="1" fill="#d1c7e3"/>
+<rect x="467.0" y="147.0" width="11" height="13" rx="1" fill="#d1c7e3"/>
+<rect x="480.0" y="147.0" width="11" height="13" rx="1" fill="#d1c7e3"/>
+<rect x="428.0" y="162.0" width="11" height="13" rx="1" fill="#ae9ecf"/>
+<rect x="441.0" y="162.0" width="11" height="13" rx="1" fill="#ae9ecf"/>
+<rect x="454.0" y="162.0" width="11" height="13" rx="1" fill="#ae9ecf"/>
+<rect x="467.0" y="162.0" width="11" height="13" rx="1" fill="#ae9ecf"/>
+<rect x="480.0" y="162.0" width="11" height="13" rx="1" fill="#ae9ecf"/>
+<rect x="428.0" y="177.0" width="11" height="13" rx="1" fill="#8a74b5"/>
+<rect x="441.0" y="177.0" width="11" height="13" rx="1" fill="#8a74b5"/>
+<rect x="454.0" y="177.0" width="11" height="13" rx="1" fill="#8a74b5"/>
+<rect x="467.0" y="177.0" width="11" height="13" rx="1" fill="#8a74b5"/>
+<rect x="480.0" y="177.0" width="11" height="13" rx="1" fill="#8a74b5"/>
+<path class="bracket" d="M 428.5 98.5 L 424.5 98.5 L 424.5 193.5 L 428.5 193.5"/>
+<path class="bracket" d="M 490.5 98.5 L 494.5 98.5 L 494.5 193.5 L 490.5 193.5"/>
+<foreignObject x="416.5" y="198.0" width="86.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12.8px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathbf{S}_{\text{packed}}$</span></div>
+</foreignObject>
+<foreignObject x="419.5" y="220.0" width="80.0" height="18.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$(6Q \times N)$</span></div>
+</foreignObject>
+<foreignObject x="497.0" y="138.0" width="22.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:14px;color:#1e293b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\times$</span></div>
+</foreignObject>
+<rect x="526.0" y="108.0" width="11" height="11" rx="1" fill="#bce0c4"/>
+<rect x="539.0" y="108.0" width="11" height="11" rx="1" fill="#89c195"/>
+<rect x="552.0" y="108.0" width="11" height="11" rx="1" fill="#5b9a68"/>
+<rect x="565.0" y="108.0" width="11" height="11" rx="1" fill="#bce0c4"/>
+<rect x="578.0" y="108.0" width="11" height="11" rx="1" fill="#89c195"/>
+<rect x="591.0" y="108.0" width="11" height="11" rx="1" fill="#5b9a68"/>
+<rect x="526.0" y="121.0" width="11" height="11" rx="1" fill="#89c195"/>
+<rect x="539.0" y="121.0" width="11" height="11" rx="1" fill="#bce0c4"/>
+<rect x="552.0" y="121.0" width="11" height="11" rx="1" fill="#5b9a68"/>
+<rect x="565.0" y="121.0" width="11" height="11" rx="1" fill="#89c195"/>
+<rect x="578.0" y="121.0" width="11" height="11" rx="1" fill="#bce0c4"/>
+<rect x="591.0" y="121.0" width="11" height="11" rx="1" fill="#5b9a68"/>
+<rect x="526.0" y="134.0" width="11" height="11" rx="1" fill="#5b9a68"/>
+<rect x="539.0" y="134.0" width="11" height="11" rx="1" fill="#5b9a68"/>
+<rect x="552.0" y="134.0" width="11" height="11" rx="1" fill="#5b9a68"/>
+<rect x="565.0" y="134.0" width="11" height="11" rx="1" fill="#5b9a68"/>
+<rect x="578.0" y="134.0" width="11" height="11" rx="1" fill="#5b9a68"/>
+<rect x="591.0" y="134.0" width="11" height="11" rx="1" fill="#5b9a68"/>
+<rect x="526.0" y="147.0" width="11" height="11" rx="1" fill="#bce0c4"/>
+<rect x="539.0" y="147.0" width="11" height="11" rx="1" fill="#89c195"/>
+<rect x="552.0" y="147.0" width="11" height="11" rx="1" fill="#5b9a68"/>
+<rect x="565.0" y="147.0" width="11" height="11" rx="1" fill="#bce0c4"/>
+<rect x="578.0" y="147.0" width="11" height="11" rx="1" fill="#89c195"/>
+<rect x="591.0" y="147.0" width="11" height="11" rx="1" fill="#5b9a68"/>
+<rect x="526.0" y="160.0" width="11" height="11" rx="1" fill="#89c195"/>
+<rect x="539.0" y="160.0" width="11" height="11" rx="1" fill="#bce0c4"/>
+<rect x="552.0" y="160.0" width="11" height="11" rx="1" fill="#5b9a68"/>
+<rect x="565.0" y="160.0" width="11" height="11" rx="1" fill="#89c195"/>
+<rect x="578.0" y="160.0" width="11" height="11" rx="1" fill="#bce0c4"/>
+<rect x="591.0" y="160.0" width="11" height="11" rx="1" fill="#5b9a68"/>
+<path class="bracket" d="M 526.5 104.5 L 522.5 104.5 L 522.5 174.5 L 526.5 174.5"/>
+<path class="bracket" d="M 601.5 104.5 L 605.5 104.5 L 605.5 174.5 L 601.5 174.5"/>
+<foreignObject x="521.0" y="198.0" width="86.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12.8px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathbf{V}_{\text{shared}}$</span></div>
+</foreignObject>
+<foreignObject x="511.0" y="220.0" width="106.0" height="18.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$(N \times 256)$ 仅读 $1$ 次</span></div>
+</foreignObject>
+<line x1="612" y1="146" x2="648" y2="146" class="arrow"/>
+<rect x="658.0" y="102.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="671.0" y="102.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="684.0" y="102.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="697.0" y="102.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="710.0" y="102.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="723.0" y="102.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="658.0" y="117.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="671.0" y="117.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="684.0" y="117.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="697.0" y="117.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="710.0" y="117.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="723.0" y="117.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="658.0" y="132.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="671.0" y="132.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="684.0" y="132.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="697.0" y="132.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="710.0" y="132.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="723.0" y="132.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="658.0" y="147.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="671.0" y="147.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="684.0" y="147.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="697.0" y="147.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="710.0" y="147.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="723.0" y="147.0" width="11" height="13" rx="1" fill="#f8d6ba"/>
+<rect x="658.0" y="162.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="671.0" y="162.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="684.0" y="162.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="697.0" y="162.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="710.0" y="162.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="723.0" y="162.0" width="11" height="13" rx="1" fill="#f3b787"/>
+<rect x="658.0" y="177.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="671.0" y="177.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="684.0" y="177.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="697.0" y="177.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="710.0" y="177.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<rect x="723.0" y="177.0" width="11" height="13" rx="1" fill="#ee995b"/>
+<path class="bracket" d="M 658.5 98.5 L 654.5 98.5 L 654.5 193.5 L 658.5 193.5"/>
+<path class="bracket" d="M 733.5 98.5 L 737.5 98.5 L 737.5 193.5 L 733.5 193.5"/>
+<foreignObject x="653.0" y="198.0" width="86.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12.8px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathbf{O}_{\text{packed}}$</span></div>
+</foreignObject>
+<foreignObject x="653.0" y="220.0" width="86.0" height="18.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$(6Q \times 256)$</span></div>
+</foreignObject>
+<rect x="754" y="96" width="202" height="142" class="note-card"/>
+<text x="766" y="115" class="note-title">17.9 → 60.8+ TFLOP/s 跃升根因</text>
+<foreignObject x="766.0" y="122.0" width="182.0" height="108.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;font-size:10.6px;color:#334155;font-weight:normal;line-height:1.32;white-space:normal;text-align:left;"><span>1. KV 显存带宽立省 $5/6$ (片上复用 $6\times$)；<br/>2. $M$ 轴扩大 $6$ 倍，彻底消除 Volta $\texttt{mma.sync.m8n8k4}$ 小矩阵发射饥饿，喂饱 CUTLASS 流水线！</span></div>
+</foreignObject>
+<foreignObject x="28.0" y="258.0" width="880.0" height="24.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;font-size:12.8px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:left;"><span><strong>(b) DeepSeek MLA 低秩潜向量缓存与推理期矩阵吸收：在 HBM 中只存 $\left[\mathbf{c}_t^{KV} \;\middle|\; \mathbf{k}_t^R\right]$，不展开多头 $\mathbf{K}, \mathbf{V}$</strong></span></div>
+</foreignObject>
+<rect x="42.0" y="314.0" width="10" height="10" rx="1" fill="#dcdfe3"/>
+<rect x="53.5" y="314.0" width="10" height="10" rx="1" fill="#b1b5ba"/>
+<rect x="65.0" y="314.0" width="10" height="10" rx="1" fill="#85898f"/>
+<rect x="76.5" y="314.0" width="10" height="10" rx="1" fill="#dcdfe3"/>
+<rect x="88.0" y="314.0" width="10" height="10" rx="1" fill="#b1b5ba"/>
+<rect x="99.5" y="314.0" width="10" height="10" rx="1" fill="#85898f"/>
+<rect x="111.0" y="314.0" width="10" height="10" rx="1" fill="#dcdfe3"/>
+<rect x="42.0" y="325.5" width="10" height="10" rx="1" fill="#b1b5ba"/>
+<rect x="53.5" y="325.5" width="10" height="10" rx="1" fill="#dcdfe3"/>
+<rect x="65.0" y="325.5" width="10" height="10" rx="1" fill="#85898f"/>
+<rect x="76.5" y="325.5" width="10" height="10" rx="1" fill="#b1b5ba"/>
+<rect x="88.0" y="325.5" width="10" height="10" rx="1" fill="#dcdfe3"/>
+<rect x="99.5" y="325.5" width="10" height="10" rx="1" fill="#85898f"/>
+<rect x="111.0" y="325.5" width="10" height="10" rx="1" fill="#b1b5ba"/>
+<path class="bracket" d="M 42.5 310.5 L 38.5 310.5 L 38.5 339.0 L 42.5 339.0"/>
+<path class="bracket" d="M 120.5 310.5 L 124.5 310.5 L 124.5 339.0 L 120.5 339.0"/>
+<foreignObject x="51.5" y="360.0" width="60.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:13px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathbf{h}_t$</span></div>
+</foreignObject>
+<foreignObject x="33.5" y="382.0" width="96.0" height="18.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$(B, T, d_{\text{model}})$</span></div>
+</foreignObject>
+<line x1="128" y1="325" x2="176" y2="325" class="arrow"/>
+<foreignObject x="126.0" y="299.0" width="52.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.5px;color:#475569;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\mathbf{W}^{DKV}$</span></div>
+</foreignObject>
+<rect x="186.0" y="306.0" width="11" height="11" rx="1" fill="#b9d6e0"/>
+<rect x="199.0" y="306.0" width="11" height="11" rx="1" fill="#7fb3c5"/>
+<rect x="212.0" y="306.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="225.0" y="306.0" width="11" height="11" rx="1" fill="#b9d6e0"/>
+<rect x="186.0" y="319.0" width="11" height="11" rx="1" fill="#7fb3c5"/>
+<rect x="199.0" y="319.0" width="11" height="11" rx="1" fill="#b9d6e0"/>
+<rect x="212.0" y="319.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="225.0" y="319.0" width="11" height="11" rx="1" fill="#7fb3c5"/>
+<rect x="186.0" y="332.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="199.0" y="332.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="212.0" y="332.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="225.0" y="332.0" width="11" height="11" rx="1" fill="#4f8fa5"/>
+<rect x="240.0" y="306.0" width="11" height="11" rx="1" fill="#eac0c0"/>
+<rect x="240.0" y="319.0" width="11" height="11" rx="1" fill="#da8e8e"/>
+<rect x="240.0" y="332.0" width="11" height="11" rx="1" fill="#c95b5b"/>
+<path class="bracket" d="M 187 303 L 183 303 L 183 346 L 187 346"/>
+<path class="bracket" d="M 250 303 L 254 303 L 254 346 L 250 346"/>
+<foreignObject x="161.5" y="360.0" width="110.0" height="22.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:12.2px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\left[\mathbf{c}_t^{KV} \;\middle|\; \mathbf{k}_t^R\right]$</span></div>
+</foreignObject>
+<foreignObject x="156.5" y="382.0" width="120.0" height="18.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#64748b;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>仅存 $(512 + 64)$ 维</span></div>
+</foreignObject>
+<line x1="258" y1="325" x2="302" y2="325" class="arrow-teal"/>
+<foreignObject x="258.0" y="301.0" width="44.0" height="18.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.2px;color:#0f766e;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>点积</span></div>
+</foreignObject>
+<rect x="308" y="292" width="380" height="106" rx="3" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.2"/>
+<text x="498" y="312" class="op-text">推理期矩阵结合律吸收 (Weight Absorbing)</text>
+<foreignObject x="318.0" y="318.0" width="360.0" height="28.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:13px;color:#0f172a;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>$\displaystyle \mathbf{q}_i\,(1 \times d_h) \;\cdot\; \mathbf{W}_i^{UK}\,(d_h \times d_c) \;\longrightarrow\; \tilde{\mathbf{q}}_i\,(1 \times d_c)$</span></div>
+</foreignObject>
+<foreignObject x="316.0" y="348.0" width="364.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.6px;color:#334155;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>无需把 $\mathbf{c}_t^{KV}$ 升维成 $128$ 头 $\mathbf{K}$（省去 $30,720$ 维片上展开）！</span></div>
+</foreignObject>
+<foreignObject x="316.0" y="370.0" width="364.0" height="20.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:10.6px;color:#334155;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:center;"><span>直接用吸收后的 $\tilde{\mathbf{q}}_i\;(512\text{维})$ 与缓存的 $\mathbf{c}_t^{KV}$ 做点积</span></div>
+</foreignObject>
+<rect x="704" y="292" width="252" height="106" class="note-card"/>
+<text x="716" y="311" class="note-title">为什么 RoPE 必须解耦外挂？</text>
+<foreignObject x="716.0" y="318.0" width="232.0" height="74.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;font-size:10.6px;color:#334155;font-weight:normal;line-height:1.32;white-space:normal;text-align:left;"><span>若对 $\mathbf{K}$ 直接施加旋转矩阵 $\mathcal{R}_t$，中间夹入依赖位置 $t$ 的 $\mathcal{R}_{s-t}$ 会阻断 $\mathbf{q}_i$ 与 $\mathbf{W}_i^{UK}$ 静态结合！故拆出 $1$ 个共享头 $\mathbf{k}_t^R\;(64\text{维})$ 专职携带 RoPE。</span></div>
+</foreignObject>
+<rect x="24" y="424" width="932" height="202" class="ledger-box"/>
+<text x="38" y="448" class="ledger-key">轴</text>
+<foreignObject x="88.0" y="432.0" width="850.0" height="26.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;font-size:11.2px;color:#334155;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:left;"><span>$G = n_q / n_{kv}$：单组共享同一 KV 头的 Query 头数（1Cat-vLLM v37 中 $G=6$）；$d_c = 512$：MLA KV 低秩压缩潜空间维；$d_R = 64$：解耦 RoPE 单头维。</span></div>
+</foreignObject>
+<line x1="36" y1="462" x2="944" y2="462" stroke="#e2e8f0" stroke-width="1"/>
+<text x="38" y="484" class="ledger-key">对象</text>
+<foreignObject x="88.0" y="468.0" width="850.0" height="26.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;font-size:11.2px;color:#334155;font-weight:normal;line-height:1.32;white-space:nowrap;text-align:left;"><span>$\mathbf{Q}_{\text{packed}} \in \mathbb{R}^{6Q \times 256}$：沿 $M$ 轴连续排布的 $6$ 头 Query；$\mathbf{c}_t^{KV} \in \mathbb{R}^{512}$：无位置编码联合压缩潜向量；$\mathbf{k}_t^R \in \mathbb{R}^{64}$：全头广播共享位置键；$\tilde{\mathbf{q}}_i = \mathbf{q}_i\mathbf{W}_i^{UK}$：吸收后查询。</span></div>
+</foreignObject>
+<line x1="36" y1="498" x2="944" y2="498" stroke="#e2e8f0" stroke-width="1"/>
+<text x="38" y="522" class="ledger-key">机制</text>
+<foreignObject x="88.0" y="504.0" width="850.0" height="110.0">
+  <div xmlns="http://www.w3.org/1999/xhtml" class="svg-latex" style="width:100%;height:100%;display:flex;align-items:center;justify-content:flex-start;font-size:11.1px;color:#334155;font-weight:normal;line-height:1.32;white-space:normal;text-align:left;"><span>(i) GQA 算子层优化：利用同一 Group 内 $G$ 个 Q 头共享同一 $(\mathbf{K}, \mathbf{V})$ 的代数结构，将 $G$ 次窄矩阵乘 $(Q \times d)\cdot(d \times N)$ 合并为 $1$ 次宽矩阵乘 $(GQ \times d)\cdot(d \times N)$，既消除 $(G{-}1)$ 次冗余 HBM 读取，又解决 Volta Tensor Core 行维度不足的发射瓶颈。<br/>(ii) MLA 架构层优化：通过低秩瓶颈 $\mathbf{c}_t^{KV}$ 将每 Token 缓存压至 $576$ 维，并借助矩阵乘法结合律把升维权重 $\mathbf{W}_i^{UK}, \mathbf{W}_i^{UV}$ 分别吸收到 Query 端与输出端。</span></div>
+</foreignObject>
+<text x="490" y="653" class="sig-line">GQA-Packed 宽矩阵打包算子与 MLA 低秩矩阵吸收机制对比 @ 1Cat-vLLM 源码精读</text>
+</svg>
